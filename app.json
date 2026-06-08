@@ -5,9 +5,20 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "ios": { "supportsTablet": false, "bundleIdentifier": "com.parksmart.mobile" },
-    "android": { "package": "com.parksmart.mobile", "adaptiveIcon": { "backgroundColor": "#2563eb" } },
-    "plugins": ["expo-secure-store"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.parksmart.mobile"
+    },
+    "android": {
+      "package": "com.parksmart.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#2563eb"
+      }
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font"
+    ],
     "scheme": "parksmart"
   }
 }
