@@ -1,12 +1,12 @@
 import axios from 'axios'
-import * as SecureStore from 'expo-secure-store'
+import storage from '../utils/storage'
 
 const BASE_URL = 'https://web-production-a1e70.up.railway.app/api/v1'
 
 const api = axios.create({ baseURL: BASE_URL, timeout: 30000, headers: { 'Content-Type': 'application/json' } })
 
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('accessToken')
+  const token = await storage.getItemAsync('accessToken')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -21,12 +21,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       if (isRefreshing) return new Promise((resolve, reject) => { failedQueue.push({ resolve, reject }) }).then(token => { original.headers.Authorization = `Bearer ${token}`; return api(original) })
       original._retry = true; isRefreshing = true
-      const refreshToken = await SecureStore.getItemAsync('refreshToken')
-      if (!refreshToken) { isRefreshing = false; await SecureStore.deleteItemAsync('accessToken'); await SecureStore.deleteItemAsync('refreshToken'); return Promise.reject(error) }
+      const refreshToken = await storage.getItemAsync('refreshToken')
+      if (!refreshToken) { isRefreshing = false; await storage.deleteItemAsync('accessToken'); await storage.deleteItemAsync('refreshToken'); return Promise.reject(error) }
       try {
         const { data } = await axios.post(`${BASE_URL}/auth/refresh-token`, { refreshToken })
-        await SecureStore.setItemAsync('accessToken', data.data.accessToken)
-        await SecureStore.setItemAsync('refreshToken', data.data.refreshToken)
+        await storage.setItemAsync('accessToken', data.data.accessToken)
+        await storage.setItemAsync('refreshToken', data.data.refreshToken)
         processQueue(null, data.data.accessToken)
         original.headers.Authorization = `Bearer ${data.data.accessToken}`
         return api(original)

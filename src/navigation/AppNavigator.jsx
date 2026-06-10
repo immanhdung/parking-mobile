@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { View, Text, TouchableOpacity, useColorScheme } from 'react-native'
+import { View, Text, TouchableOpacity, useColorScheme, Platform } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createStackNavigator } from '@react-navigation/stack'
@@ -128,10 +128,10 @@ function CustomTabBar({ state, navigation }) {
       intensity={dark ? 80 : 65}
       tint={dark ? 'dark' : 'light'}
       style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
         borderTopWidth: 1,
         borderTopColor: dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
-        paddingBottom: 24, paddingTop: 10,
+        paddingBottom: Platform.OS === 'ios' ? 24 : 12, paddingTop: 10,
+        backgroundColor: dark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.85)',
       }}
     >
       <View style={{ flexDirection: 'row', paddingHorizontal: 6 }}>
