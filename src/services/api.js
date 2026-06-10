@@ -83,4 +83,10 @@ export const notificationAPI = {
 export const feedbackAPI = { create: (d) => api.post('/feedbacks', d) }
 export const userAPI = {
   updateProfile: (d) => api.put('/users/profile', d),
+  getAll: (params) => api.get('/users', { params }),
+  getById: (id) => api.get(`/users/${id}`),
+  update: (id, d) => api.put(`/users/${id}`, d),
+  delete: (id) => api.delete(`/users/${id}`),
+  toggleBlock: (id) => api.patch(`/users/${id}/block`),
 }
+
