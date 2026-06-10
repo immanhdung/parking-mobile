@@ -96,7 +96,7 @@ export default function HomeScreen({ navigation }) {
         <Animated.View entering={FadeInDown.delay(400)}>
           <SectionHeader title="Đặt chỗ gần đây" action="Xem tất cả" onAction={() => navigation.navigate('HistoryStack')} />
           {!bookings ? (
-            <View style={{ gap: 10 }}>{[0,1].map(i => <Skeleton key={i} width="100%" height={80} radius={16} />)}</View>
+            <View style={{ gap: 10 }}>{[0, 1].map(i => <Skeleton key={i} width="100%" height={80} radius={16} />)}</View>
           ) : bookings.length === 0 ? (
             <Card style={{ alignItems: 'center', paddingVertical: 28 }}>
               <Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} />
@@ -130,7 +130,7 @@ export default function HomeScreen({ navigation }) {
         <Animated.View entering={FadeInDown.delay(500)}>
           <SectionHeader title="Bãi xe" action="Đặt chỗ" onAction={() => navigation.navigate('BookingStack')} />
           {!lots ? (
-            <View style={{ gap: 10 }}>{[0,1].map(i => <Skeleton key={i} width="100%" height={100} radius={16} />)}</View>
+            <View style={{ gap: 10 }}>{[0, 1].map(i => <Skeleton key={i} width="100%" height={100} radius={16} />)}</View>
           ) : lots.map((lot, i) => (
             <Animated.View key={lot._id} entering={FadeInDown.delay(i * 80)}>
               <Card style={{ marginBottom: 10 }} onPress={() => navigation.navigate('ParkingLotDetail', { lotId: lot._id })}>

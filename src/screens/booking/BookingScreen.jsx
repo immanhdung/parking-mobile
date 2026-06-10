@@ -66,7 +66,7 @@ export default function BookingScreen({ navigation, route }) {
             <View style={{ gap: 20 }}>
               <View>
                 <Text style={{ fontSize: SIZES.fontLg, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 12 }}>Chọn bãi xe</Text>
-                {lotsLoading ? <View style={{ gap: 10 }}>{[0,1,2].map(i => <Skeleton key={i} width="100%" height={80} radius={16} />)}</View> :
+                {lotsLoading ? <View style={{ gap: 10 }}>{[0, 1, 2].map(i => <Skeleton key={i} width="100%" height={80} radius={16} />)}</View> :
                   lots?.map(lot => (
                     <TouchableOpacity key={lot._id} onPress={() => setForm({ ...form, parkingLot: lot })} activeOpacity={0.85}>
                       <Card style={{ marginBottom: 10, borderWidth: 2, borderColor: form.parkingLot?._id === lot._id ? COLORS.primary : (dark ? COLORS.dark.border : '#f1f5f9'), backgroundColor: form.parkingLot?._id === lot._id ? COLORS.primaryBg : (dark ? COLORS.dark.bgCard : '#fff') }}>

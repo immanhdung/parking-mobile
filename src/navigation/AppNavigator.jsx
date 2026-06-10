@@ -39,6 +39,12 @@ import NotificationsScreen from '../screens/notifications/NotificationsScreen'
 import ProfileScreen from '../screens/profile/ProfileScreen'
 import FeedbackScreen from '../screens/profile/FeedbackScreen'
 
+// Admin screens
+import AdminHomeScreen from '../screens/admin/AdminHomeScreen'
+import UserManagementScreen from '../screens/admin/UserManagementScreen'
+import PermissionsScreen from '../screens/admin/PermissionsScreen'
+import SystemConfigScreen from '../screens/admin/SystemConfigScreen'
+
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
 
@@ -104,24 +110,73 @@ function ProfileStack() {
   )
 }
 
+// ── Admin Home Stack ──
+function AdminHomeStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AdminHome" component={AdminHomeScreen} />
+    </Stack.Navigator>
+  )
+}
+
+// ── User Management Stack ──
+function UserManagementStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="UserManagement" component={UserManagementScreen} />
+    </Stack.Navigator>
+  )
+}
+
+// ── Permissions Stack ──
+function PermissionsStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Permissions" component={PermissionsScreen} />
+    </Stack.Navigator>
+  )
+}
+
+// ── System Config Stack ──
+function SystemConfigStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="SystemConfig" component={SystemConfigScreen} />
+    </Stack.Navigator>
+  )
+}
+
 // ── Custom Tab Bar ──
 function CustomTabBar({ state, navigation }) {
   const scheme = useColorScheme()
   const dark = scheme === 'dark'
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'system_admin'
 
   const { data: unreadData } = useQuery({
     queryKey: ['unread-count'],
     queryFn: () => notificationAPI.getUnreadCount().then(r => r.data.data),
     refetchInterval: 30000,
+    enabled: !isAdmin,
   })
 
-  const TABS = [
+  const USER_TABS = [
     { name: 'HomeStack',    icon: 'home',     label: 'Trang chủ' },
     { name: 'BookingStack', icon: 'calendar', label: 'Đặt chỗ',   special: true },
     { name: 'HistoryStack', icon: 'time',     label: 'Lịch sử' },
     { name: 'PaymentStack', icon: 'card',     label: 'Thanh toán' },
     { name: 'ProfileStack', icon: 'person',   label: 'Hồ sơ',     badge: unreadData?.count },
   ]
+
+  const ADMIN_TABS = [
+    { name: 'AdminHomeStack',      icon: 'home',             label: 'Trang chủ' },
+    { name: 'UserManagementStack', icon: 'people',           label: 'Tài khoản' },
+    { name: 'PermissionsStack',    icon: 'shield-checkmark', label: 'Quyền',     special: true },
+    { name: 'SystemConfigStack',   icon: 'settings',         label: 'Cấu hình' },
+    { name: 'ProfileStack',        icon: 'person',           label: 'Hồ sơ' },
+  ]
+
+  const TABS = isAdmin ? ADMIN_TABS : USER_TABS
 
   return (
     <BlurView
@@ -201,6 +256,22 @@ function CustomTabBar({ state, navigation }) {
   )
 }
 
+// ── Admin Tabs ──
+function AdminTabs() {
+  return (
+    <Tab.Navigator
+      tabBar={props => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tab.Screen name="AdminHomeStack"      component={AdminHomeStack} />
+      <Tab.Screen name="UserManagementStack" component={UserManagementStack} />
+      <Tab.Screen name="PermissionsStack"    component={PermissionsStack} />
+      <Tab.Screen name="SystemConfigStack"   component={SystemConfigStack} />
+      <Tab.Screen name="ProfileStack"        component={ProfileStack} />
+    </Tab.Navigator>
+  )
+}
+
 // ── Main Tabs ──
 function MainTabs() {
   return (
@@ -219,9 +290,11 @@ function MainTabs() {
 
 // ── Root Stack (allows Notifications modal over any tab) ──
 function RootStack() {
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'system_admin'
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="MainTabs" component={isAdmin ? AdminTabs : MainTabs} />
       <Stack.Screen
         name="Notifications"
         component={NotificationsScreen}

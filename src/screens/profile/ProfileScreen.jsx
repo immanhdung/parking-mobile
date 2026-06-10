@@ -56,19 +56,27 @@ export default function ProfileScreen({ navigation }) {
     ])
   }
 
+  const isAdmin = user?.role === 'system_admin'
+
   const MENU = [
-    { section: 'Tài khoản', items: [
-      { icon: 'person-outline', label: 'Chỉnh sửa hồ sơ', action: () => setEditMode(true) },
-      { icon: 'lock-closed-outline', label: 'Đổi mật khẩu', action: () => setPassMode(true) },
-    ]},
-    { section: 'Lịch sử', items: [
-      { icon: 'calendar-outline', label: 'Lịch sử đặt chỗ', action: () => navigation.navigate('HistoryStack') },
-      { icon: 'card-outline', label: 'Lịch sử thanh toán', action: () => navigation.navigate('PaymentStack') },
-    ]},
-    { section: 'Hỗ trợ', items: [
-      { icon: 'chatbubble-outline', label: 'Gửi phản hồi', action: () => navigation.navigate('Feedback') },
-      { icon: 'information-circle-outline', label: 'Về ứng dụng', action: () => Toast.show({ type: 'info', text1: 'ParkSmart v1.0.0' }) },
-    ]},
+    {
+      section: 'Tài khoản', items: [
+        { icon: 'person-outline', label: 'Chỉnh sửa hồ sơ', action: () => setEditMode(true) },
+        { icon: 'lock-closed-outline', label: 'Đổi mật khẩu', action: () => setPassMode(true) },
+      ]
+    },
+    ...(!isAdmin ? [{
+      section: 'Lịch sử', items: [
+        { icon: 'calendar-outline', label: 'Lịch sử đặt chỗ', action: () => navigation.navigate('HistoryStack') },
+        { icon: 'card-outline', label: 'Lịch sử thanh toán', action: () => navigation.navigate('PaymentStack') },
+      ]
+    }] : []),
+    {
+      section: 'Hỗ trợ', items: [
+        { icon: 'chatbubble-outline', label: 'Gửi phản hồi', action: () => navigation.navigate('Feedback') },
+        { icon: 'information-circle-outline', label: 'Về ứng dụng', action: () => Toast.show({ type: 'info', text1: 'ParkSmart v1.0.0' }) },
+      ]
+    },
   ]
 
   return (
@@ -91,7 +99,7 @@ export default function ProfileScreen({ navigation }) {
         {/* Info cards */}
         <View style={{ flexDirection: 'row', marginHorizontal: SIZES.screenPadding, marginTop: -20, gap: 10, marginBottom: 8 }}>
           {[
-            { label: 'Email', value: user?.isEmailVerified ? '✅ Đã xác thực' : '❌ Chưa xác thực', color: user?.isEmailVerified ? COLORS.success : COLORS.danger },
+            { label: 'Email', value: user?.isEmailVerified ? 'Đã xác thực' : 'Chưa xác thực', color: user?.isEmailVerified ? COLORS.success : COLORS.danger },
             { label: 'SĐT', value: user?.phone || 'Chưa cập nhật' },
           ].map((item, i) => (
             <Card key={i} style={{ flex: 1, alignItems: 'center', paddingVertical: 14 }}>
