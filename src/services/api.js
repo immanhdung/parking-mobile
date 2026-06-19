@@ -89,4 +89,12 @@ export const userAPI = {
   delete: (id) => api.delete(`/users/${id}`),
   toggleBlock: (id) => api.patch(`/users/${id}/block`),
 }
+export const reportsAPI = {
+  getDashboard: (params) => api.get('/reports/dashboard', { params }),
+  getRevenue: (params) => api.get('/reports/revenue', { params }),
+  getSessions: (params) => api.get('/reports/sessions', { params }),
+  getOccupancy: (params) => api.get('/reports/occupancy', { params }),
+  exportSessions: (params) => api.get('/reports/export/sessions', { params, responseType: 'blob' }),
+}
+
 

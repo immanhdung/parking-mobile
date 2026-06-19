@@ -73,7 +73,7 @@ export default function ProfileScreen({ navigation }) {
     }] : []),
     {
       section: 'Hỗ trợ', items: [
-        { icon: 'chatbubble-outline', label: 'Gửi phản hồi', action: () => navigation.navigate('Feedback') },
+        ...(!isAdmin ? [{ icon: 'chatbubble-outline', label: 'Gửi phản hồi', action: () => navigation.navigate('Feedback') }] : []),
         { icon: 'information-circle-outline', label: 'Về ứng dụng', action: () => Toast.show({ type: 'info', text1: 'ParkSmart v1.0.0' }) },
       ]
     },

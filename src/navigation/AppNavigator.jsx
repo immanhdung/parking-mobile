@@ -44,6 +44,7 @@ import AdminHomeScreen from '../screens/admin/AdminHomeScreen'
 import UserManagementScreen from '../screens/admin/UserManagementScreen'
 import PermissionsScreen from '../screens/admin/PermissionsScreen'
 import SystemConfigScreen from '../screens/admin/SystemConfigScreen'
+import ReportsScreen from '../screens/admin/ReportsScreen'
 
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
@@ -115,6 +116,7 @@ function AdminHomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="AdminHome" component={AdminHomeScreen} />
+      <Stack.Screen name="Reports" component={ReportsScreen} />
     </Stack.Navigator>
   )
 }
@@ -161,19 +163,19 @@ function CustomTabBar({ state, navigation }) {
   })
 
   const USER_TABS = [
-    { name: 'HomeStack',    icon: 'home',     label: 'Trang chủ' },
-    { name: 'BookingStack', icon: 'calendar', label: 'Đặt chỗ',   special: true },
-    { name: 'HistoryStack', icon: 'time',     label: 'Lịch sử' },
-    { name: 'PaymentStack', icon: 'card',     label: 'Thanh toán' },
-    { name: 'ProfileStack', icon: 'person',   label: 'Hồ sơ',     badge: unreadData?.count },
+    { name: 'HomeStack', icon: 'home', label: 'Trang chủ' },
+    { name: 'BookingStack', icon: 'calendar', label: 'Đặt chỗ', special: true },
+    { name: 'HistoryStack', icon: 'time', label: 'Lịch sử' },
+    { name: 'PaymentStack', icon: 'card', label: 'Thanh toán' },
+    { name: 'ProfileStack', icon: 'person', label: 'Hồ sơ', badge: unreadData?.count },
   ]
 
   const ADMIN_TABS = [
-    { name: 'AdminHomeStack',      icon: 'home',             label: 'Trang chủ' },
-    { name: 'UserManagementStack', icon: 'people',           label: 'Tài khoản' },
-    { name: 'PermissionsStack',    icon: 'shield-checkmark', label: 'Quyền',     special: true },
-    { name: 'SystemConfigStack',   icon: 'settings',         label: 'Cấu hình' },
-    { name: 'ProfileStack',        icon: 'person',           label: 'Hồ sơ' },
+    { name: 'AdminHomeStack', icon: 'home', label: 'Trang chủ' },
+    { name: 'UserManagementStack', icon: 'people', label: 'Tài khoản' },
+    { name: 'PermissionsStack', icon: 'shield-checkmark', label: 'Quyền', special: true },
+    { name: 'SystemConfigStack', icon: 'settings', label: 'Cấu hình' },
+    { name: 'ProfileStack', icon: 'person', label: 'Hồ sơ' },
   ]
 
   const TABS = isAdmin ? ADMIN_TABS : USER_TABS
@@ -263,11 +265,11 @@ function AdminTabs() {
       tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="AdminHomeStack"      component={AdminHomeStack} />
+      <Tab.Screen name="AdminHomeStack" component={AdminHomeStack} />
       <Tab.Screen name="UserManagementStack" component={UserManagementStack} />
-      <Tab.Screen name="PermissionsStack"    component={PermissionsStack} />
-      <Tab.Screen name="SystemConfigStack"   component={SystemConfigStack} />
-      <Tab.Screen name="ProfileStack"        component={ProfileStack} />
+      <Tab.Screen name="PermissionsStack" component={PermissionsStack} />
+      <Tab.Screen name="SystemConfigStack" component={SystemConfigStack} />
+      <Tab.Screen name="ProfileStack" component={ProfileStack} />
     </Tab.Navigator>
   )
 }
@@ -279,7 +281,7 @@ function MainTabs() {
       tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="HomeStack"    component={HomeStack} />
+      <Tab.Screen name="HomeStack" component={HomeStack} />
       <Tab.Screen name="BookingStack" component={BookingStack} />
       <Tab.Screen name="HistoryStack" component={HistoryStack} />
       <Tab.Screen name="PaymentStack" component={PaymentStack} />
