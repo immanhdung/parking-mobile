@@ -14,11 +14,11 @@ const STEPS = ['Chọn bãi & vị trí', 'Thông tin xe', 'Xác nhận']
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 const STATUS_STYLE = {
-  available:   { bg: '#f0fdf4', border: '#86efac', text: '#15803d' },
-  occupied:    { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626' },
-  reserved:    { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8' },
+  available: { bg: '#f0fdf4', border: '#86efac', text: '#15803d' },
+  occupied: { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626' },
+  reserved: { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8' },
   maintenance: { bg: '#fffbeb', border: '#fcd34d', text: '#d97706' },
-  locked:      { bg: '#f8fafc', border: '#e2e8f0', text: '#94a3b8' },
+  locked: { bg: '#f8fafc', border: '#e2e8f0', text: '#94a3b8' },
 }
 
 export default function BookingScreen({ navigation, route }) {
@@ -70,7 +70,7 @@ export default function BookingScreen({ navigation, route }) {
     queryKey: ['lots-booking'],
     queryFn: () => parkingLotAPI.getAll({ status: 'active', limit: 20 }).then(r => r.data.data),
   })
-  
+
   const { data: vehicleTypes } = useQuery({
     queryKey: ['vehicle-types'],
     queryFn: () => vehicleTypeAPI.getAll().then(r => r.data.data),
@@ -95,17 +95,17 @@ export default function BookingScreen({ navigation, route }) {
   })
 
   const createMut = useMutation({
-    mutationFn: () => bookingAPI.create({ 
-      parkingLot: form.parkingLot._id, 
-      vehicleType: form.vehicleType._id, 
-      scheduledDate: form.scheduledDate, 
-      startTime: form.startTime, 
-      endTime: form.endTime, 
+    mutationFn: () => bookingAPI.create({
+      parkingLot: form.parkingLot._id,
+      vehicleType: form.vehicleType._id,
+      scheduledDate: form.scheduledDate,
+      startTime: form.startTime,
+      endTime: form.endTime,
       vehicleInfo: form.vehicleInfo,
       floorId: selectedSlot?.floor || selectedSlot?.floorId,
       zoneId: selectedSlot?.zone || selectedSlot?.zoneId
     }),
-    onSuccess: (res) => { 
+    onSuccess: (res) => {
       qc.invalidateQueries(['my-bookings-home'])
       setCreatedBooking(res.data.data)
       setPaymentModalVisible(true)
@@ -158,7 +158,7 @@ export default function BookingScreen({ navigation, route }) {
     return true
   }
 
-  const VehicleEmoji = (code) => ({ CAR: '🚗', MOTORBIKE: '🏍️', BICYCLE: '🚲', ELECTRIC_BIKE: '⚡' }[code] || '🚙')
+  const VehicleEmoji = (code) => ({ CAR: '🚖', MOTORBIKE: '🏍️', BICYCLE: '🚲', ELECTRIC_BIKE: '⚡' }[code] || '🚚')
 
   const getDateObject = (dateStr) => {
     const d = new Date(dateStr)
@@ -234,7 +234,7 @@ export default function BookingScreen({ navigation, route }) {
               {form.parkingLot && form.vehicleType && (
                 <Animated.View entering={FadeInDown} style={{ gap: 12 }}>
                   <Text style={{ fontSize: SIZES.fontLg, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>Chọn vị trí đỗ (Slot) *</Text>
-                  
+
                   {/* Floor selector tabs */}
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
                     {floors?.map(floor => (
@@ -509,7 +509,7 @@ export default function BookingScreen({ navigation, route }) {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <View style={{ width: '100%', backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderRadius: 24, padding: 24, gap: 16, alignItems: 'center', ...SHADOWS.md }}>
             <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>Thanh toán đặt chỗ</Text>
-            
+
             <View style={{ width: '100%', backgroundColor: COLORS.primaryBg, borderRadius: 16, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: COLORS.primaryBg2 }}>
               <Text style={{ fontSize: SIZES.fontXs, color: COLORS.textSecondary }}>TỔNG TIỀN THANH TOÁN</Text>
               <Text style={{ fontSize: 24, fontWeight: '900', color: COLORS.primary, marginTop: 4 }}>

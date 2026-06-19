@@ -29,7 +29,7 @@ export default function ParkingLotDetailScreen({ route, navigation }) {
       <View style={{ flex: 1, backgroundColor: dark ? COLORS.dark.bg : COLORS.bg }}>
         <ScreenHeader title="Thông tin bãi xe" onBack={() => navigation.goBack()} />
         <View style={{ padding: SIZES.screenPadding, gap: 12 }}>
-          {[0,1,2].map(i => <Skeleton key={i} width="100%" height={80} radius={16}/>)}
+          {[0, 1, 2].map(i => <Skeleton key={i} width="100%" height={80} radius={16} />)}
         </View>
       </View>
     )
@@ -63,10 +63,10 @@ export default function ParkingLotDetailScreen({ route, navigation }) {
           {/* Slot summary */}
           <Animated.View entering={FadeInDown.delay(150)} style={{ flexDirection: 'row', gap: 10 }}>
             {[
-              { label: 'Tổng slot',   value: summary?.total || 0,       color: COLORS.primary, bg: COLORS.primaryBg },
-              { label: 'Trống',       value: summary?.available || 0,    color: COLORS.success, bg: COLORS.successBg },
-              { label: 'Đang đỗ',    value: summary?.occupied || 0,     color: COLORS.danger,  bg: COLORS.dangerBg },
-              { label: 'Đã đặt',     value: summary?.reserved || 0,     color: '#1d4ed8',      bg: '#eff6ff' },
+              { label: 'Tổng slot', value: summary?.total || 0, color: COLORS.primary, bg: COLORS.primaryBg },
+              { label: 'Trống', value: summary?.available || 0, color: COLORS.success, bg: COLORS.successBg },
+              { label: 'Đang đỗ', value: summary?.occupied || 0, color: COLORS.danger, bg: COLORS.dangerBg },
+              { label: 'Đã đặt', value: summary?.reserved || 0, color: '#1d4ed8', bg: '#eff6ff' },
             ].map((item, i) => (
               <Card key={i} style={{ flex: 1, alignItems: 'center', paddingVertical: 14, backgroundColor: item.bg }}>
                 <Text style={{ fontSize: 20, fontWeight: '900', color: item.color }}>{item.value}</Text>
@@ -97,7 +97,7 @@ export default function ParkingLotDetailScreen({ route, navigation }) {
           <Animated.View entering={FadeInDown.delay(250)}>
             <Card>
               <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 12 }}>
-                ℹ️ Thông tin
+                Thông tin
               </Text>
               {[
                 { icon: 'time-outline', label: 'Giờ hoạt động', value: lot?.operatingHours?.is24Hours ? '24/7' : `${lot?.operatingHours?.open} – ${lot?.operatingHours?.close}` },
@@ -126,7 +126,7 @@ export default function ParkingLotDetailScreen({ route, navigation }) {
             <Animated.View entering={FadeInDown.delay(300)}>
               <Card>
                 <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 10 }}>
-                  🎁 Tiện ích
+                  Tiện ích
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {lot.amenities.map((a, i) => (
