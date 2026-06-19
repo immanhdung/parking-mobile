@@ -4,13 +4,22 @@ import { Ionicons } from '@expo/vector-icons'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Toast from 'react-native-toast-message'
-import { parkingLotAPI, vehicleTypeAPI, slotAPI, bookingAPI } from '../../services/api'
-import { Button, Card, Input, ScreenHeader, Skeleton, Divider } from '../../components/common'
+import DateTimePicker from '@react-native-community/datetimepicker'
+import { parkingLotAPI, vehicleTypeAPI, slotAPI, bookingAPI, floorAPI } from '../../services/api'
+import { Button, Card, Input, ScreenHeader, Skeleton, Divider, Badge } from '../../components/common'
 import { COLORS, SIZES, SHADOWS } from '../../utils/theme'
 import { formatCurrency, calcEstimatedFee } from '../../utils/helpers'
 
-const STEPS = ['Chọn bãi xe', 'Thông tin xe', 'Xác nhận']
+const STEPS = ['Chọn bãi & vị trí', 'Thông tin xe', 'Xác nhận']
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
+
+const STATUS_STYLE = {
+  available:   { bg: '#f0fdf4', border: '#86efac', text: '#15803d' },
+  occupied:    { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626' },
+  reserved:    { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8' },
+  maintenance: { bg: '#fffbeb', border: '#fcd34d', text: '#d97706' },
+  locked:      { bg: '#f8fafc', border: '#e2e8f0', text: '#94a3b8' },
+}
 
 export default function BookingScreen({ navigation, route }) {
   const scheme = useColorScheme()
@@ -24,24 +33,65 @@ export default function BookingScreen({ navigation, route }) {
     vehicleInfo: { licensePlate: '', vehicleModel: '', vehicleColor: '' },
   })
 
-  // State for Pickers & Payment
+  // State for Pickers, Slots & Payment
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [timePickerType, setTimePickerType] = useState(null) // 'start' | 'end' | null
   const [createdBooking, setCreatedBooking] = useState(null)
   const [paymentModalVisible, setPaymentModalVisible] = useState(false)
 
+  // Slots Mapping
+  const [selectedFloor, setSelectedFloor] = useState(null)
+  const [selectedSlot, setSelectedSlot] = useState(null)
+
+  // Screen focus listener to reset the booking form
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setStep(0)
+      setForm({
+        parkingLot: null, vehicleType: null,
+        scheduledDate: new Date().toISOString().split('T')[0],
+        startTime: '08:00', endTime: '17:00',
+        vehicleInfo: { licensePlate: '', vehicleModel: '', vehicleColor: '' },
+      })
+      setSelectedFloor(null)
+      setSelectedSlot(null)
+    })
+    return unsubscribe
+  }, [navigation])
+
+  // Reset slot selection when parking lot or vehicle type changes
+  useEffect(() => {
+    setSelectedFloor(null)
+    setSelectedSlot(null)
+  }, [form.parkingLot, form.vehicleType])
+
+  // Fetch queries
   const { data: lots, isLoading: lotsLoading } = useQuery({
     queryKey: ['lots-booking'],
     queryFn: () => parkingLotAPI.getAll({ status: 'active', limit: 20 }).then(r => r.data.data),
   })
+  
   const { data: vehicleTypes } = useQuery({
     queryKey: ['vehicle-types'],
     queryFn: () => vehicleTypeAPI.getAll().then(r => r.data.data),
   })
-  const { data: available } = useQuery({
-    queryKey: ['avail-slots', form.parkingLot?._id, form.vehicleType?._id],
-    queryFn: () => slotAPI.findAvailable({ parkingLotId: form.parkingLot._id, vehicleTypeId: form.vehicleType._id }).then(r => r.data.data),
-    enabled: !!form.parkingLot && !!form.vehicleType,
+
+  const { data: floors } = useQuery({
+    queryKey: ['floors-booking-flow', form.parkingLot?._id],
+    queryFn: () => floorAPI.getAll({ parkingLot: form.parkingLot._id }).then(r => r.data.data),
+    enabled: !!form.parkingLot,
+  })
+
+  useEffect(() => {
+    if (floors?.[0] && !selectedFloor) {
+      setSelectedFloor(floors[0]._id)
+    }
+  }, [floors, selectedFloor])
+
+  const { data: slots, isLoading: slotsLoading } = useQuery({
+    queryKey: ['slots-booking-flow-map', selectedFloor],
+    queryFn: () => slotAPI.getFloorMap(selectedFloor).then(r => r.data.data),
+    enabled: !!selectedFloor,
   })
 
   const createMut = useMutation({
@@ -51,7 +101,9 @@ export default function BookingScreen({ navigation, route }) {
       scheduledDate: form.scheduledDate, 
       startTime: form.startTime, 
       endTime: form.endTime, 
-      vehicleInfo: form.vehicleInfo 
+      vehicleInfo: form.vehicleInfo,
+      floorId: selectedSlot?.floor || selectedSlot?.floorId,
+      zoneId: selectedSlot?.zone || selectedSlot?.zoneId
     }),
     onSuccess: (res) => { 
       qc.invalidateQueries(['my-bookings-home'])
@@ -100,43 +152,26 @@ export default function BookingScreen({ navigation, route }) {
   }
 
   const estFee = form.vehicleType ? calcEstimatedFee(form.startTime, form.endTime, form.vehicleType.pricing?.hourlyRate) : 0
-  const canNext = () => step === 0 ? !!form.parkingLot && !!form.vehicleType : step === 1 ? !!form.vehicleInfo.licensePlate.trim() && !!form.scheduledDate : true
+  const canNext = () => {
+    if (step === 0) return !!form.parkingLot && !!form.vehicleType && !!selectedSlot
+    if (step === 1) return !!form.vehicleInfo.licensePlate.trim() && !!form.scheduledDate
+    return true
+  }
 
   const VehicleEmoji = (code) => ({ CAR: '🚗', MOTORBIKE: '🏍️', BICYCLE: '🚲', ELECTRIC_BIKE: '⚡' }[code] || '🚙')
 
-  // Date generators
-  const getNextDays = () => {
-    const days = []
-    for (let i = 0; i < 8; i++) {
-      const d = new Date()
-      d.setDate(d.getDate() + i)
-      days.push(d)
-    }
-    return days
-  }
-  const DAYS = getNextDays()
-
-  const getDayLabel = (d) => {
-    const today = new Date()
-    const tomorrow = new Date()
-    tomorrow.setDate(today.getDate() + 1)
-    if (d.toDateString() === today.toDateString()) return 'Hôm nay'
-    if (d.toDateString() === tomorrow.toDateString()) return 'Ngày mai'
-    const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
-    return days[d.getDay()]
+  const getDateObject = (dateStr) => {
+    const d = new Date(dateStr)
+    return isNaN(d.getTime()) ? new Date() : d
   }
 
-  // Time slots generator
-  const generateTimeOptions = () => {
-    const options = []
-    for (let h = 6; h <= 22; h++) {
-      const hStr = h < 10 ? `0${h}` : `${h}`
-      options.push(`${hStr}:00`)
-      options.push(`${hStr}:30`)
-    }
-    return options
+  const getTimeObject = (timeStr) => {
+    const [h, m] = timeStr.split(':')
+    const d = new Date()
+    d.setHours(parseInt(h) || 8)
+    d.setMinutes(parseInt(m) || 0)
+    return d
   }
-  const TIME_OPTIONS = generateTimeOptions()
 
   return (
     <View style={{ flex: 1, backgroundColor: dark ? COLORS.dark.bg : COLORS.bg }}>
@@ -151,7 +186,7 @@ export default function BookingScreen({ navigation, route }) {
 
       <ScrollView contentContainerStyle={{ padding: SIZES.screenPadding, paddingBottom: 120, gap: 16 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Animated.View entering={FadeInDown.duration(300)}>
-          {/* STEP 0 */}
+          {/* STEP 0: Selection */}
           {step === 0 && (
             <View style={{ gap: 20 }}>
               <View>
@@ -175,35 +210,110 @@ export default function BookingScreen({ navigation, route }) {
                   ))
                 }
               </View>
-              <View>
-                <Text style={{ fontSize: SIZES.fontLg, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 12 }}>Loại phương tiện</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                  {vehicleTypes?.map(vt => (
-                    <TouchableOpacity key={vt._id} onPress={() => setForm({ ...form, vehicleType: vt })} activeOpacity={0.85}>
-                      <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 2, borderColor: form.vehicleType?._id === vt._id ? COLORS.primary : (dark ? COLORS.dark.border : COLORS.border), backgroundColor: form.vehicleType?._id === vt._id ? COLORS.primaryBg : (dark ? COLORS.dark.bgSecondary : '#f8fafc'), flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 20 }}>{VehicleEmoji(vt.code)}</Text>
-                        <View>
-                          <Text style={{ fontSize: SIZES.fontSm, fontWeight: '700', color: form.vehicleType?._id === vt._id ? COLORS.primary : (dark ? COLORS.dark.text : COLORS.text) }}>{vt.name}</Text>
-                          <Text style={{ fontSize: 10, color: COLORS.textTertiary }}>{formatCurrency(vt.pricing?.hourlyRate)}/giờ</Text>
+
+              {form.parkingLot && (
+                <Animated.View entering={FadeInDown}>
+                  <Text style={{ fontSize: SIZES.fontLg, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 12 }}>Loại phương tiện</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    {vehicleTypes?.map(vt => (
+                      <TouchableOpacity key={vt._id} onPress={() => setForm({ ...form, vehicleType: vt })} activeOpacity={0.85}>
+                        <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderRadius: 14, borderWidth: 2, borderColor: form.vehicleType?._id === vt._id ? COLORS.primary : (dark ? COLORS.dark.border : COLORS.border), backgroundColor: form.vehicleType?._id === vt._id ? COLORS.primaryBg : (dark ? COLORS.dark.bgSecondary : '#f8fafc'), flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={{ fontSize: 20 }}>{VehicleEmoji(vt.code)}</Text>
+                          <View>
+                            <Text style={{ fontSize: SIZES.fontSm, fontWeight: '700', color: form.vehicleType?._id === vt._id ? COLORS.primary : (dark ? COLORS.dark.text : COLORS.text) }}>{vt.name}</Text>
+                            <Text style={{ fontSize: 10, color: COLORS.textTertiary }}>{formatCurrency(vt.pricing?.hourlyRate)}/giờ</Text>
+                          </View>
                         </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              {available && (
-                <Card style={{ backgroundColor: COLORS.successBg, borderColor: '#bbf7d0', borderWidth: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
-                    <Text style={{ color: COLORS.success, fontWeight: '600' }}>{available.total} chỗ trống phù hợp</Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                  {available.recommended && <Text style={{ color: COLORS.textSecondary, fontSize: SIZES.fontSm, marginTop: 4 }}>Gợi ý: Slot {available.recommended.slotCode}</Text>}
-                </Card>
+                </Animated.View>
+              )}
+
+              {/* Slot map rendering directly in booking screen */}
+              {form.parkingLot && form.vehicleType && (
+                <Animated.View entering={FadeInDown} style={{ gap: 12 }}>
+                  <Text style={{ fontSize: SIZES.fontLg, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>Chọn vị trí đỗ (Slot) *</Text>
+                  
+                  {/* Floor selector tabs */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
+                    {floors?.map(floor => (
+                      <TouchableOpacity key={floor._id} onPress={() => setSelectedFloor(floor._id)} activeOpacity={0.8}>
+                        <View style={{
+                          paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
+                          backgroundColor: selectedFloor === floor._id ? COLORS.primary : (dark ? COLORS.dark.bgSecondary : '#f1f5f9'),
+                        }}>
+                          <Text style={{ fontSize: SIZES.fontSm, fontWeight: '700', color: selectedFloor === floor._id ? '#fff' : COLORS.textSecondary }}>
+                            {floor.name}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  {/* Slots display */}
+                  {slotsLoading ? (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} width={60} height={50} radius={10} />)}
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {slots?.map(slot => {
+                        const st = STATUS_STYLE[slot.status] || STATUS_STYLE.locked
+                        const isSelected = selectedSlot?._id === slot._id
+                        const isVehicleMatch = slot.vehicleType?.code === form.vehicleType?.code
+                        const isAvailable = slot.status === 'available'
+                        const isSelectable = isAvailable && isVehicleMatch
+
+                        return (
+                          <TouchableOpacity
+                            key={slot._id}
+                            disabled={!isSelectable}
+                            onPress={() => setSelectedSlot(isSelected ? null : slot)}
+                            activeOpacity={0.8}
+                            style={{
+                              width: 60, height: 50,
+                              borderRadius: 10,
+                              backgroundColor: dark ? `${st.bg}22` : st.bg,
+                              borderWidth: isSelected ? 2.5 : 1.5,
+                              borderColor: isSelected ? COLORS.primary : st.border,
+                              alignItems: 'center', justifyContent: 'center',
+                              opacity: isSelectable ? 1 : 0.35
+                            }}
+                          >
+                            <Text style={{ fontSize: 9, fontWeight: '800', color: st.text }}>{slot.slotCode}</Text>
+                            <Text style={{ fontSize: 7, color: COLORS.textTertiary }}>{slot.vehicleType?.code}</Text>
+                            {isSelected && (
+                              <View style={{ position: 'absolute', top: -3, right: -3, width: 14, height: 14, borderRadius: 7, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' }}>
+                                <Ionicons name="checkmark" size={10} color="#fff" />
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </View>
+                  )}
+
+                  {/* Selected slot overview card */}
+                  {selectedSlot && (
+                    <Card style={{ backgroundColor: COLORS.primaryBg, borderColor: COLORS.primaryBg2, borderWidth: 1, marginTop: 4 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View>
+                          <Text style={{ fontSize: SIZES.fontXs, color: COLORS.textSecondary }}>Vị trí đã chọn</Text>
+                          <Text style={{ fontSize: SIZES.fontLg, fontWeight: '800', color: COLORS.primary, marginTop: 2 }}>
+                            Slot {selectedSlot.slotCode} ({selectedSlot.zone?.name || 'Khu vực'} · Tầng {selectedSlot.floor?.name || 'Tầng'})
+                          </Text>
+                        </View>
+                        <Badge status="available" label="Đầy đủ điều kiện" />
+                      </View>
+                    </Card>
+                  )}
+                </Animated.View>
               )}
             </View>
           )}
 
-          {/* STEP 1 */}
+          {/* STEP 1: Details */}
           {step === 1 && (
             <View style={{ gap: 14 }}>
               <Input label="Biển số xe *" value={form.vehicleInfo.licensePlate} onChangeText={v => setForm({ ...form, vehicleInfo: { ...form.vehicleInfo, licensePlate: v.toUpperCase() } })} placeholder="51A-12345" icon="car-outline" />
@@ -248,20 +358,21 @@ export default function BookingScreen({ navigation, route }) {
             </View>
           )}
 
-          {/* STEP 2 */}
+          {/* STEP 2: Confirmation */}
           {step === 2 && (
             <View style={{ gap: 14 }}>
               <Card style={{ backgroundColor: COLORS.primaryBg, borderColor: COLORS.primaryBg2, borderWidth: 1 }}>
                 <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: COLORS.primary, marginBottom: 14 }}>Thông tin đặt chỗ</Text>
                 {[
                   { label: 'Bãi xe', value: form.parkingLot?.name, icon: 'business-outline' },
+                  { label: 'Vị trí đỗ', value: `Slot ${selectedSlot?.slotCode} (${selectedSlot?.floor?.name || 'Tầng'})`, icon: 'grid-outline' },
                   { label: 'Loại xe', value: form.vehicleType?.name, icon: 'car-outline' },
                   { label: 'Ngày', value: form.scheduledDate, icon: 'calendar-outline' },
                   { label: 'Giờ', value: `${form.startTime} → ${form.endTime}`, icon: 'time-outline' },
                   { label: 'Biển số', value: form.vehicleInfo.licensePlate, icon: 'id-card-outline' },
                   { label: 'Phí ước tính', value: formatCurrency(estFee), icon: 'cash-outline', color: COLORS.primary },
                 ].map((item, i) => (
-                  <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: i < 5 ? 1 : 0, borderBottomColor: COLORS.primaryBg2 }}>
+                  <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: i < 6 ? 1 : 0, borderBottomColor: COLORS.primaryBg2 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <Ionicons name={item.icon} size={16} color={COLORS.textTertiary} />
                       <Text style={{ color: COLORS.textSecondary, fontSize: SIZES.fontSm }}>{item.label}</Text>
@@ -286,101 +397,112 @@ export default function BookingScreen({ navigation, route }) {
         <Button title={step < 2 ? 'Tiếp theo →' : '🎉 Xác nhận đặt chỗ'} onPress={() => step < 2 ? setStep(step + 1) : createMut.mutate()} loading={createMut.isPending} disabled={!canNext()} size="lg" />
       </View>
 
-      {/* ── Custom Date Picker Modal ── */}
-      <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: SIZES.screenPadding, maxHeight: '80%', gap: 14 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>Chọn ngày đặt chỗ</Text>
-              <TouchableOpacity onPress={() => setShowDatePicker(false)}><Ionicons name="close" size={24} color={COLORS.textSecondary} /></TouchableOpacity>
-            </View>
-            <ScrollView contentContainerStyle={{ gap: 8 }}>
-              {DAYS.map((d, index) => {
-                const dateStr = d.toISOString().split('T')[0]
-                const isSelected = form.scheduledDate === dateStr
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => { setForm({ ...form, scheduledDate: dateStr }); setShowDatePicker(false) }}
-                    style={{
-                      padding: 16,
-                      borderRadius: 16,
-                      borderWidth: 2,
-                      borderColor: isSelected ? COLORS.primary : (dark ? COLORS.dark.border : '#e2e8f0'),
-                      backgroundColor: isSelected ? COLORS.primaryBg : 'transparent',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <View>
-                      <Text style={{ fontWeight: '800', fontSize: SIZES.fontMd, color: isSelected ? COLORS.primary : (dark ? COLORS.dark.text : COLORS.text) }}>
-                        {getDayLabel(d)}
-                      </Text>
-                      <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary, marginTop: 4 }}>
-                        {d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric', year: 'numeric' })}
-                      </Text>
-                    </View>
-                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />}
-                  </TouchableOpacity>
-                )
-              })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Custom Time Picker Modal ── */}
-      <Modal visible={timePickerType !== null} transparent animationType="slide" onRequestClose={() => setTimePickerType(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: SIZES.screenPadding, gap: 14 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>
-                Chọn {timePickerType === 'start' ? 'giờ vào' : 'giờ ra'}
-              </Text>
-              <TouchableOpacity onPress={() => setTimePickerType(null)}><Ionicons name="close" size={24} color={COLORS.textSecondary} /></TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-                {TIME_OPTIONS.map((time, idx) => {
-                  const currentVal = timePickerType === 'start' ? form.startTime : form.endTime
-                  const isSelected = currentVal === time
-                  return (
-                    <TouchableOpacity
-                      key={idx}
-                      onPress={() => {
-                        if (timePickerType === 'start') {
-                          setForm({ ...form, startTime: time })
-                        } else {
-                          setForm({ ...form, endTime: time })
-                        }
-                        setTimePickerType(null)
-                      }}
-                      style={{
-                        width: (SCREEN_WIDTH - SIZES.screenPadding * 2 - 40) / 4,
-                        paddingVertical: 12,
-                        borderRadius: 12,
-                        borderWidth: 1.5,
-                        borderColor: isSelected ? COLORS.primary : (dark ? COLORS.dark.border : '#e2e8f0'),
-                        backgroundColor: isSelected ? COLORS.primaryBg : 'transparent',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text style={{
-                        fontWeight: '700',
-                        fontSize: SIZES.fontSm,
-                        color: isSelected ? COLORS.primary : (dark ? COLORS.dark.text : COLORS.text)
-                      }}>
-                        {time}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                })}
+      {/* ── Native Date Picker (Android Dialog / iOS Tray Modal) ── */}
+      {Platform.OS === 'ios' ? (
+        <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: SIZES.screenPadding, gap: 14 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>Chọn ngày đặt chỗ</Text>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: SIZES.fontMd }}>Xong</Text>
+                </TouchableOpacity>
               </View>
-            </ScrollView>
+              <DateTimePicker
+                value={getDateObject(form.scheduledDate)}
+                mode="date"
+                display="spinner"
+                minimumDate={new Date()}
+                maximumDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
+                onChange={(event, date) => {
+                  if (date) {
+                    const dateStr = date.toISOString().split('T')[0]
+                    setForm({ ...form, scheduledDate: dateStr })
+                  }
+                }}
+                themeVariant={dark ? 'dark' : 'light'}
+              />
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      ) : (
+        showDatePicker && (
+          <DateTimePicker
+            value={getDateObject(form.scheduledDate)}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            maximumDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
+            onChange={(event, date) => {
+              setShowDatePicker(false)
+              if (date) {
+                const dateStr = date.toISOString().split('T')[0]
+                setForm({ ...form, scheduledDate: dateStr })
+              }
+            }}
+          />
+        )
+      )}
+
+      {/* ── Native Time Picker (Android Dialog / iOS Tray Modal) ── */}
+      {Platform.OS === 'ios' ? (
+        <Modal visible={timePickerType !== null} transparent animationType="slide" onRequestClose={() => setTimePickerType(null)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: SIZES.screenPadding, gap: 14 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>
+                  Chọn {timePickerType === 'start' ? 'giờ vào' : 'giờ ra'}
+                </Text>
+                <TouchableOpacity onPress={() => setTimePickerType(null)}>
+                  <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: SIZES.fontMd }}>Xong</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={getTimeObject(timePickerType === 'start' ? form.startTime : form.endTime)}
+                mode="time"
+                display="spinner"
+                is24Hour={true}
+                onChange={(event, time) => {
+                  if (time) {
+                    const h = time.getHours()
+                    const m = time.getMinutes()
+                    const timeStr = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`
+                    if (timePickerType === 'start') {
+                      setForm({ ...form, startTime: timeStr })
+                    } else {
+                      setForm({ ...form, endTime: timeStr })
+                    }
+                  }
+                }}
+                themeVariant={dark ? 'dark' : 'light'}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        timePickerType !== null && (
+          <DateTimePicker
+            value={getTimeObject(timePickerType === 'start' ? form.startTime : form.endTime)}
+            mode="time"
+            display="default"
+            is24Hour={true}
+            onChange={(event, time) => {
+              const currentType = timePickerType
+              setTimePickerType(null)
+              if (time) {
+                const h = time.getHours()
+                const m = time.getMinutes()
+                const timeStr = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`
+                if (currentType === 'start') {
+                  setForm({ ...form, startTime: timeStr })
+                } else {
+                  setForm({ ...form, endTime: timeStr })
+                }
+              }
+            }}
+          />
+        )
+      )}
 
       {/* ── Payment QR Code Polling Modal ── */}
       <Modal visible={paymentModalVisible} transparent animationType="fade">

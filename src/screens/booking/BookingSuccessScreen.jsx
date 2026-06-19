@@ -70,8 +70,9 @@ export default function BookingSuccessScreen({ route, navigation }) {
       </ScrollView>
 
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: SIZES.screenPadding, paddingBottom: Platform.OS === 'ios' ? 32 : 20, backgroundColor: dark ? COLORS.dark.bg : COLORS.white, borderTopWidth: 1, borderTopColor: dark ? COLORS.dark.border : COLORS.border, gap: 10 }}>
-        <Button title="Xem lịch sử đặt chỗ" onPress={() => navigation.navigate('HistoryStack')} size="lg" />
-        <Button title="Về trang chủ" onPress={() => navigation.navigate('HomeStack')} variant="outline" size="lg" />
+        <Button title="Tiếp tục đặt chỗ" onPress={() => navigation.navigate('Booking')} size="lg" />
+        <Button title="Xem lịch sử đặt chỗ" onPress={() => navigation.navigate('HistoryStack')} variant="outline" size="lg" />
+        <Button title="Về trang chủ" onPress={() => navigation.navigate('HomeStack')} variant="ghost" size="lg" />
       </View>
     </View>
   )
