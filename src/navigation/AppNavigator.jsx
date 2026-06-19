@@ -166,7 +166,6 @@ function CustomTabBar({ state, navigation }) {
     { name: 'HomeStack', icon: 'home', label: 'Trang chủ' },
     { name: 'BookingStack', icon: 'calendar', label: 'Đặt chỗ', special: true },
     { name: 'HistoryStack', icon: 'time', label: 'Lịch sử' },
-    { name: 'PaymentStack', icon: 'card', label: 'Thanh toán' },
     { name: 'ProfileStack', icon: 'person', label: 'Hồ sơ', badge: unreadData?.count },
   ]
 
@@ -284,7 +283,6 @@ function MainTabs() {
       <Tab.Screen name="HomeStack" component={HomeStack} />
       <Tab.Screen name="BookingStack" component={BookingStack} />
       <Tab.Screen name="HistoryStack" component={HistoryStack} />
-      <Tab.Screen name="PaymentStack" component={PaymentStack} />
       <Tab.Screen name="ProfileStack" component={ProfileStack} />
     </Tab.Navigator>
   )

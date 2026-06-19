@@ -68,7 +68,6 @@ export default function ProfileScreen({ navigation }) {
     ...(!isAdmin ? [{
       section: 'Lịch sử', items: [
         { icon: 'calendar-outline', label: 'Lịch sử đặt chỗ', action: () => navigation.navigate('HistoryStack') },
-        { icon: 'card-outline', label: 'Lịch sử thanh toán', action: () => navigation.navigate('PaymentStack') },
       ]
     }] : []),
     {
