@@ -1,15 +1,16 @@
-import React, { useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, useColorScheme, Platform } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, useColorScheme, Platform, Modal, Image, ActivityIndicator, Dimensions } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Toast from 'react-native-toast-message'
 import { parkingLotAPI, vehicleTypeAPI, slotAPI, bookingAPI } from '../../services/api'
-import { Button, Card, Input, ScreenHeader, Skeleton } from '../../components/common'
+import { Button, Card, Input, ScreenHeader, Skeleton, Divider } from '../../components/common'
 import { COLORS, SIZES, SHADOWS } from '../../utils/theme'
 import { formatCurrency, calcEstimatedFee } from '../../utils/helpers'
 
 const STEPS = ['Chọn bãi xe', 'Thông tin xe', 'Xác nhận']
+const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
 export default function BookingScreen({ navigation, route }) {
   const scheme = useColorScheme()
@@ -22,6 +23,12 @@ export default function BookingScreen({ navigation, route }) {
     startTime: '08:00', endTime: '17:00',
     vehicleInfo: { licensePlate: '', vehicleModel: '', vehicleColor: '' },
   })
+
+  // State for Pickers & Payment
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [timePickerType, setTimePickerType] = useState(null) // 'start' | 'end' | null
+  const [createdBooking, setCreatedBooking] = useState(null)
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false)
 
   const { data: lots, isLoading: lotsLoading } = useQuery({
     queryKey: ['lots-booking'],
@@ -38,15 +45,98 @@ export default function BookingScreen({ navigation, route }) {
   })
 
   const createMut = useMutation({
-    mutationFn: () => bookingAPI.create({ parkingLot: form.parkingLot._id, vehicleType: form.vehicleType._id, scheduledDate: form.scheduledDate, startTime: form.startTime, endTime: form.endTime, vehicleInfo: form.vehicleInfo }),
-    onSuccess: (res) => { qc.invalidateQueries(['my-bookings-home']); navigation.navigate('BookingSuccess', { booking: res.data.data }) },
+    mutationFn: () => bookingAPI.create({ 
+      parkingLot: form.parkingLot._id, 
+      vehicleType: form.vehicleType._id, 
+      scheduledDate: form.scheduledDate, 
+      startTime: form.startTime, 
+      endTime: form.endTime, 
+      vehicleInfo: form.vehicleInfo 
+    }),
+    onSuccess: (res) => { 
+      qc.invalidateQueries(['my-bookings-home'])
+      setCreatedBooking(res.data.data)
+      setPaymentModalVisible(true)
+    },
     onError: (err) => Toast.show({ type: 'error', text1: 'Đặt chỗ thất bại', text2: err.response?.data?.message }),
   })
+
+  // Polling check for payment status
+  useEffect(() => {
+    let intervalId
+    if (paymentModalVisible && createdBooking) {
+      intervalId = setInterval(async () => {
+        try {
+          const { data } = await bookingAPI.getById(createdBooking._id)
+          const booking = data.data
+          if (booking.paymentStatus === 'paid' || booking.status === 'approved') {
+            clearInterval(intervalId)
+            setPaymentModalVisible(false)
+            setCreatedBooking(null)
+            qc.invalidateQueries(['my-bookings-home'])
+            navigation.navigate('BookingSuccess', { booking })
+          }
+        } catch (err) {
+          console.error('Error polling booking payment status:', err)
+        }
+      }, 3000)
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [paymentModalVisible, createdBooking])
+
+  const handleSimulatePayment = () => {
+    if (!createdBooking) return
+    const mockPaidBooking = {
+      ...createdBooking,
+      paymentStatus: 'paid',
+      status: 'approved'
+    }
+    setPaymentModalVisible(false)
+    setCreatedBooking(null)
+    qc.invalidateQueries(['my-bookings-home'])
+    navigation.navigate('BookingSuccess', { booking: mockPaidBooking })
+  }
 
   const estFee = form.vehicleType ? calcEstimatedFee(form.startTime, form.endTime, form.vehicleType.pricing?.hourlyRate) : 0
   const canNext = () => step === 0 ? !!form.parkingLot && !!form.vehicleType : step === 1 ? !!form.vehicleInfo.licensePlate.trim() && !!form.scheduledDate : true
 
   const VehicleEmoji = (code) => ({ CAR: '🚗', MOTORBIKE: '🏍️', BICYCLE: '🚲', ELECTRIC_BIKE: '⚡' }[code] || '🚙')
+
+  // Date generators
+  const getNextDays = () => {
+    const days = []
+    for (let i = 0; i < 8; i++) {
+      const d = new Date()
+      d.setDate(d.getDate() + i)
+      days.push(d)
+    }
+    return days
+  }
+  const DAYS = getNextDays()
+
+  const getDayLabel = (d) => {
+    const today = new Date()
+    const tomorrow = new Date()
+    tomorrow.setDate(today.getDate() + 1)
+    if (d.toDateString() === today.toDateString()) return 'Hôm nay'
+    if (d.toDateString() === tomorrow.toDateString()) return 'Ngày mai'
+    const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
+    return days[d.getDay()]
+  }
+
+  // Time slots generator
+  const generateTimeOptions = () => {
+    const options = []
+    for (let h = 6; h <= 22; h++) {
+      const hStr = h < 10 ? `0${h}` : `${h}`
+      options.push(`${hStr}:00`)
+      options.push(`${hStr}:30`)
+    }
+    return options
+  }
+  const TIME_OPTIONS = generateTimeOptions()
 
   return (
     <View style={{ flex: 1, backgroundColor: dark ? COLORS.dark.bg : COLORS.bg }}>
@@ -121,11 +211,32 @@ export default function BookingScreen({ navigation, route }) {
                 <View style={{ flex: 1 }}><Input label="Hãng xe" value={form.vehicleInfo.vehicleModel} onChangeText={v => setForm({ ...form, vehicleInfo: { ...form.vehicleInfo, vehicleModel: v } })} placeholder="Toyota Vios" icon="car-sport-outline" /></View>
                 <View style={{ flex: 1 }}><Input label="Màu xe" value={form.vehicleInfo.vehicleColor} onChangeText={v => setForm({ ...form, vehicleInfo: { ...form.vehicleInfo, vehicleColor: v } })} placeholder="Trắng" icon="color-palette-outline" /></View>
               </View>
-              <Input label="Ngày đặt *" value={form.scheduledDate} onChangeText={v => setForm({ ...form, scheduledDate: v })} placeholder="YYYY-MM-DD" icon="calendar-outline" />
+
+              {/* Clickable Date Picker trigger */}
+              <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.9}>
+                <View pointerEvents="none">
+                  <Input label="Ngày đặt *" value={form.scheduledDate} placeholder="Chọn ngày đặt" icon="calendar-outline" editable={false} />
+                </View>
+              </TouchableOpacity>
+
+              {/* Clickable Time Picker triggers */}
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}><Input label="Giờ vào *" value={form.startTime} onChangeText={v => setForm({ ...form, startTime: v })} placeholder="08:00" icon="time-outline" /></View>
-                <View style={{ flex: 1 }}><Input label="Giờ ra *" value={form.endTime} onChangeText={v => setForm({ ...form, endTime: v })} placeholder="17:00" icon="time-outline" /></View>
+                <View style={{ flex: 1 }}>
+                  <TouchableOpacity onPress={() => setTimePickerType('start')} activeOpacity={0.9}>
+                    <View pointerEvents="none">
+                      <Input label="Giờ vào *" value={form.startTime} placeholder="Chọn giờ vào" icon="time-outline" editable={false} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <TouchableOpacity onPress={() => setTimePickerType('end')} activeOpacity={0.9}>
+                    <View pointerEvents="none">
+                      <Input label="Giờ ra *" value={form.endTime} placeholder="Chọn giờ ra" icon="time-outline" editable={false} />
+                    </View>
+                  </TouchableOpacity>
+                </View>
               </View>
+
               {estFee > 0 && (
                 <Card style={{ backgroundColor: COLORS.primaryBg, borderColor: COLORS.primaryBg2, borderWidth: 1 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -162,7 +273,7 @@ export default function BookingScreen({ navigation, route }) {
               <Card style={{ backgroundColor: '#fffbeb', borderColor: '#fde68a', borderWidth: 1 }}>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <Ionicons name="information-circle-outline" size={18} color={COLORS.warning} />
-                  <Text style={{ flex: 1, fontSize: SIZES.fontSm, color: '#92400e', lineHeight: 20 }}>QR code sẽ được tạo sau khi đặt. Hệ thống tự động gán slot phù hợp nhất.</Text>
+                  <Text style={{ flex: 1, fontSize: SIZES.fontSm, color: '#92400e', lineHeight: 20 }}>Mã QR thanh toán sẽ hiển thị ở bước tiếp theo để hoàn tất quy trình đặt chỗ.</Text>
                 </View>
               </Card>
             </View>
@@ -174,6 +285,145 @@ export default function BookingScreen({ navigation, route }) {
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: SIZES.screenPadding, paddingBottom: Platform.OS === 'ios' ? 32 : 20, backgroundColor: dark ? COLORS.dark.bg : COLORS.white, borderTopWidth: 1, borderTopColor: dark ? COLORS.dark.border : COLORS.border, ...SHADOWS.md }}>
         <Button title={step < 2 ? 'Tiếp theo →' : '🎉 Xác nhận đặt chỗ'} onPress={() => step < 2 ? setStep(step + 1) : createMut.mutate()} loading={createMut.isPending} disabled={!canNext()} size="lg" />
       </View>
+
+      {/* ── Custom Date Picker Modal ── */}
+      <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: SIZES.screenPadding, maxHeight: '80%', gap: 14 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>Chọn ngày đặt chỗ</Text>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}><Ionicons name="close" size={24} color={COLORS.textSecondary} /></TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ gap: 8 }}>
+              {DAYS.map((d, index) => {
+                const dateStr = d.toISOString().split('T')[0]
+                const isSelected = form.scheduledDate === dateStr
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => { setForm({ ...form, scheduledDate: dateStr }); setShowDatePicker(false) }}
+                    style={{
+                      padding: 16,
+                      borderRadius: 16,
+                      borderWidth: 2,
+                      borderColor: isSelected ? COLORS.primary : (dark ? COLORS.dark.border : '#e2e8f0'),
+                      backgroundColor: isSelected ? COLORS.primaryBg : 'transparent',
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <View>
+                      <Text style={{ fontWeight: '800', fontSize: SIZES.fontMd, color: isSelected ? COLORS.primary : (dark ? COLORS.dark.text : COLORS.text) }}>
+                        {getDayLabel(d)}
+                      </Text>
+                      <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary, marginTop: 4 }}>
+                        {d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric', year: 'numeric' })}
+                      </Text>
+                    </View>
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />}
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Custom Time Picker Modal ── */}
+      <Modal visible={timePickerType !== null} transparent animationType="slide" onRequestClose={() => setTimePickerType(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: SIZES.screenPadding, gap: 14 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>
+                Chọn {timePickerType === 'start' ? 'giờ vào' : 'giờ ra'}
+              </Text>
+              <TouchableOpacity onPress={() => setTimePickerType(null)}><Ionicons name="close" size={24} color={COLORS.textSecondary} /></TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+                {TIME_OPTIONS.map((time, idx) => {
+                  const currentVal = timePickerType === 'start' ? form.startTime : form.endTime
+                  const isSelected = currentVal === time
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      onPress={() => {
+                        if (timePickerType === 'start') {
+                          setForm({ ...form, startTime: time })
+                        } else {
+                          setForm({ ...form, endTime: time })
+                        }
+                        setTimePickerType(null)
+                      }}
+                      style={{
+                        width: (SCREEN_WIDTH - SIZES.screenPadding * 2 - 40) / 4,
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        borderWidth: 1.5,
+                        borderColor: isSelected ? COLORS.primary : (dark ? COLORS.dark.border : '#e2e8f0'),
+                        backgroundColor: isSelected ? COLORS.primaryBg : 'transparent',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{
+                        fontWeight: '700',
+                        fontSize: SIZES.fontSm,
+                        color: isSelected ? COLORS.primary : (dark ? COLORS.dark.text : COLORS.text)
+                      }}>
+                        {time}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Payment QR Code Polling Modal ── */}
+      <Modal visible={paymentModalVisible} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ width: '100%', backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderRadius: 24, padding: 24, gap: 16, alignItems: 'center', ...SHADOWS.md }}>
+            <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>Thanh toán đặt chỗ</Text>
+            
+            <View style={{ width: '100%', backgroundColor: COLORS.primaryBg, borderRadius: 16, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: COLORS.primaryBg2 }}>
+              <Text style={{ fontSize: SIZES.fontXs, color: COLORS.textSecondary }}>TỔNG TIỀN THANH TOÁN</Text>
+              <Text style={{ fontSize: 24, fontWeight: '900', color: COLORS.primary, marginTop: 4 }}>
+                {formatCurrency(createdBooking?.estimatedFee || estFee)}
+              </Text>
+            </View>
+
+            <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary, textAlign: 'center' }}>
+              Vui lòng quét mã QR MoMo dưới đây để thanh toán cho mã đặt chỗ <Text style={{ fontWeight: '700', color: COLORS.primary }}>{createdBooking?.bookingCode}</Text>
+            </Text>
+
+            {/* QR Image */}
+            <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 16, ...SHADOWS.card }}>
+              {createdBooking?.qrCode ? (
+                <Image source={{ uri: createdBooking.qrCode }} style={{ width: 180, height: 180 }} resizeMode="contain" />
+              ) : (
+                <ActivityIndicator size="large" color={COLORS.primary} style={{ width: 180, height: 180 }} />
+              )}
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={{ fontSize: SIZES.fontXs + 1, color: COLORS.textSecondary, fontWeight: '600' }}>
+                Đang chờ xác nhận giao dịch từ MoMo...
+              </Text>
+            </View>
+
+            <Divider style={{ width: '100%', marginVertical: 4 }} />
+
+            <View style={{ width: '100%', gap: 10 }}>
+              <Button title="Tôi đã thanh toán (Simulate)" onPress={handleSimulatePayment} size="md" />
+              <Button title="Hủy đặt chỗ" variant="outline" onPress={() => { setPaymentModalVisible(false); setCreatedBooking(null) }} size="md" />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
