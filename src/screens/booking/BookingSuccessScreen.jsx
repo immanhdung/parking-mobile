@@ -37,7 +37,7 @@ export default function BookingSuccessScreen({ route, navigation }) {
         {/* QR Code */}
         <Animated.View entering={FadeInDown.delay(400)}>
           <Card style={{ alignItems: 'center', padding: 24, marginBottom: 16 }}>
-            <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 20 }}>🎫 Mã QR Check-in</Text>
+            <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 20 }}>Mã QR Check-in</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 16, ...SHADOWS.md }}>
               <QRCode value={qrData} size={180} backgroundColor="#fff" color="#1e293b" />
             </View>

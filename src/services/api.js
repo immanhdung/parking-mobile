@@ -83,10 +83,22 @@ export const notificationAPI = {
 export const feedbackAPI = { create: (d) => api.post('/feedbacks', d) }
 export const userAPI = {
   updateProfile: (d) => api.put('/users/profile', d),
+  updateAvatar: (formData) => api.put('/users/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  getActivityLogs: (params) => api.get('/users/my-activity', { params }),
   getAll: (params) => api.get('/users', { params }),
   getById: (id) => api.get(`/users/${id}`),
   update: (id, d) => api.put(`/users/${id}`, d),
   delete: (id) => api.delete(`/users/${id}`),
   toggleBlock: (id) => api.patch(`/users/${id}/block`),
 }
+export const vehicleAPI = {
+  getAll: (params) => api.get('/vehicles', { params }),
+  getById: (id) => api.get(`/vehicles/${id}`),
+  create: (d) => api.post('/vehicles', d),
+  update: (id, d) => api.put(`/vehicles/${id}`, d),
+  delete: (id) => api.delete(`/vehicles/${id}`),
+  setDefault: (id) => api.patch(`/vehicles/${id}/default`),
+  getDefault: () => api.get('/vehicles/default'),
+}
+
 

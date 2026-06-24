@@ -63,6 +63,7 @@ export default function ProfileScreen({ navigation }) {
       section: 'Tài khoản', items: [
         { icon: 'person-outline', label: 'Chỉnh sửa hồ sơ', action: () => setEditMode(true) },
         { icon: 'lock-closed-outline', label: 'Đổi mật khẩu', action: () => setPassMode(true) },
+        { icon: 'car-outline', label: 'Quản lý phương tiện', action: () => navigation.navigate('Vehicles') },
       ]
     },
     ...(!isAdmin ? [{
