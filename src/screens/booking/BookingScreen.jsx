@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Toast from 'react-native-toast-message'
-import DateTimePicker from '@react-native-community/datetimepicker'
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker'
 import { parkingLotAPI, vehicleTypeAPI, slotAPI, bookingAPI, floorAPI, paymentAPI } from '../../services/api'
 import { Button, Card, Input, ScreenHeader, Skeleton, Divider, Badge } from '../../components/common'
 import { COLORS, SIZES, SHADOWS } from '../../utils/theme'
@@ -36,6 +36,11 @@ export default function BookingScreen({ navigation, route }) {
   // State for Pickers, Slots & Payment
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [timePickerType, setTimePickerType] = useState(null) // 'start' | 'end' | null
+  // iOS spinner pickers hold a local draft value; only committed to `form` on "Xong" (Done).
+  // Feeding the picker's own onChange value straight back into its `value` prop on every tick
+  // fights the native UIDatePicker mid-scroll and makes the selection appear to snap back.
+  const [draftDate, setDraftDate] = useState(null)
+  const [draftTime, setDraftTime] = useState(null)
   const [createdBooking, setCreatedBooking] = useState(null)
   const [paymentModalVisible, setPaymentModalVisible] = useState(false)
   const [paymentInfo, setPaymentInfo] = useState(null)
@@ -59,6 +64,8 @@ export default function BookingScreen({ navigation, route }) {
       setCreatedBooking(null)
       setPaymentInfo(null)
       setPaymentModalVisible(false)
+      setDraftDate(null)
+      setDraftTime(null)
     })
     return unsubscribe
   }, [navigation])
@@ -182,6 +189,50 @@ export default function BookingScreen({ navigation, route }) {
     d.setHours(parseInt(h) || 8)
     d.setMinutes(parseInt(m) || 0)
     return d
+  }
+
+  // Android must use the imperative API — rendering <DateTimePicker> declaratively
+  // works for the first dialog shown but silently fails to reopen for subsequent ones.
+  const openDatePicker = () => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: getDateObject(form.scheduledDate),
+        mode: 'date',
+        display: 'default',
+        minimumDate: new Date(),
+        maximumDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        onChange: (event, date) => {
+          if (event.type === 'set' && date) {
+            setForm(f => ({ ...f, scheduledDate: date.toISOString().split('T')[0] }))
+          }
+        },
+      })
+    } else {
+      setDraftDate(getDateObject(form.scheduledDate))
+      setShowDatePicker(true)
+    }
+  }
+
+  const openTimePicker = (type) => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: getTimeObject(type === 'start' ? form.startTime : form.endTime),
+        mode: 'time',
+        display: 'default',
+        is24Hour: true,
+        onChange: (event, time) => {
+          if (event.type === 'set' && time) {
+            const h = time.getHours()
+            const m = time.getMinutes()
+            const timeStr = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`
+            setForm(f => type === 'start' ? { ...f, startTime: timeStr } : { ...f, endTime: timeStr })
+          }
+        },
+      })
+    } else {
+      setDraftTime(getTimeObject(type === 'start' ? form.startTime : form.endTime))
+      setTimePickerType(type)
+    }
   }
 
   return (
@@ -334,7 +385,7 @@ export default function BookingScreen({ navigation, route }) {
               </View>
 
               {/* Clickable Date Picker trigger */}
-              <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.9}>
+              <TouchableOpacity onPress={openDatePicker} activeOpacity={0.9}>
                 <View pointerEvents="none">
                   <Input label="Ngày đặt *" value={form.scheduledDate} placeholder="Chọn ngày đặt" icon="calendar-outline" editable={false} />
                 </View>
@@ -343,14 +394,14 @@ export default function BookingScreen({ navigation, route }) {
               {/* Clickable Time Picker triggers */}
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>
-                  <TouchableOpacity onPress={() => setTimePickerType('start')} activeOpacity={0.9}>
+                  <TouchableOpacity onPress={() => openTimePicker('start')} activeOpacity={0.9}>
                     <View pointerEvents="none">
                       <Input label="Giờ vào *" value={form.startTime} placeholder="Chọn giờ vào" icon="time-outline" editable={false} />
                     </View>
                   </TouchableOpacity>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <TouchableOpacity onPress={() => setTimePickerType('end')} activeOpacity={0.9}>
+                  <TouchableOpacity onPress={() => openTimePicker('end')} activeOpacity={0.9}>
                     <View pointerEvents="none">
                       <Input label="Giờ ra *" value={form.endTime} placeholder="Chọn giờ ra" icon="time-outline" editable={false} />
                     </View>
@@ -408,55 +459,36 @@ export default function BookingScreen({ navigation, route }) {
         <Button title={step < 2 ? 'Tiếp theo →' : '🎉 Xác nhận đặt chỗ'} onPress={() => step < 2 ? setStep(step + 1) : createMut.mutate()} loading={createMut.isPending} disabled={!canNext()} size="lg" />
       </View>
 
-      {/* ── Native Date Picker (Android Dialog / iOS Tray Modal) ── */}
-      {Platform.OS === 'ios' ? (
+      {/* ── Native Date Picker (Android uses the imperative DateTimePickerAndroid.open API above; iOS uses this tray modal) ── */}
+      {Platform.OS === 'ios' && (
         <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
             <View style={{ backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: SIZES.screenPadding, gap: 14 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>Chọn ngày đặt chỗ</Text>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <TouchableOpacity onPress={() => {
+                  if (draftDate) setForm(f => ({ ...f, scheduledDate: draftDate.toISOString().split('T')[0] }))
+                  setShowDatePicker(false)
+                }}>
                   <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: SIZES.fontMd }}>Xong</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker
-                value={getDateObject(form.scheduledDate)}
+                value={draftDate || getDateObject(form.scheduledDate)}
                 mode="date"
                 display="spinner"
                 minimumDate={new Date()}
                 maximumDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
-                onChange={(event, date) => {
-                  if (date) {
-                    const dateStr = date.toISOString().split('T')[0]
-                    setForm({ ...form, scheduledDate: dateStr })
-                  }
-                }}
+                onChange={(event, date) => { if (date) setDraftDate(date) }}
                 themeVariant={dark ? 'dark' : 'light'}
               />
             </View>
           </View>
         </Modal>
-      ) : (
-        showDatePicker && (
-          <DateTimePicker
-            value={getDateObject(form.scheduledDate)}
-            mode="date"
-            display="default"
-            minimumDate={new Date()}
-            maximumDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
-            onChange={(event, date) => {
-              setShowDatePicker(false)
-              if (date) {
-                const dateStr = date.toISOString().split('T')[0]
-                setForm({ ...form, scheduledDate: dateStr })
-              }
-            }}
-          />
-        )
       )}
 
-      {/* ── Native Time Picker (Android Dialog / iOS Tray Modal) ── */}
-      {Platform.OS === 'ios' ? (
+      {/* ── Native Time Picker (Android uses the imperative DateTimePickerAndroid.open API above; iOS uses this tray modal) ── */}
+      {Platform.OS === 'ios' && (
         <Modal visible={timePickerType !== null} transparent animationType="slide" onRequestClose={() => setTimePickerType(null)}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
             <View style={{ backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: SIZES.screenPadding, gap: 14 }}>
@@ -464,55 +496,29 @@ export default function BookingScreen({ navigation, route }) {
                 <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>
                   Chọn {timePickerType === 'start' ? 'giờ vào' : 'giờ ra'}
                 </Text>
-                <TouchableOpacity onPress={() => setTimePickerType(null)}>
+                <TouchableOpacity onPress={() => {
+                  if (draftTime) {
+                    const h = draftTime.getHours()
+                    const m = draftTime.getMinutes()
+                    const timeStr = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`
+                    setForm(f => timePickerType === 'start' ? { ...f, startTime: timeStr } : { ...f, endTime: timeStr })
+                  }
+                  setTimePickerType(null)
+                }}>
                   <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: SIZES.fontMd }}>Xong</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker
-                value={getTimeObject(timePickerType === 'start' ? form.startTime : form.endTime)}
+                value={draftTime || getTimeObject(timePickerType === 'start' ? form.startTime : form.endTime)}
                 mode="time"
                 display="spinner"
                 is24Hour={true}
-                onChange={(event, time) => {
-                  if (time) {
-                    const h = time.getHours()
-                    const m = time.getMinutes()
-                    const timeStr = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`
-                    if (timePickerType === 'start') {
-                      setForm({ ...form, startTime: timeStr })
-                    } else {
-                      setForm({ ...form, endTime: timeStr })
-                    }
-                  }
-                }}
+                onChange={(event, time) => { if (time) setDraftTime(time) }}
                 themeVariant={dark ? 'dark' : 'light'}
               />
             </View>
           </View>
         </Modal>
-      ) : (
-        timePickerType !== null && (
-          <DateTimePicker
-            value={getTimeObject(timePickerType === 'start' ? form.startTime : form.endTime)}
-            mode="time"
-            display="default"
-            is24Hour={true}
-            onChange={(event, time) => {
-              const currentType = timePickerType
-              setTimePickerType(null)
-              if (time) {
-                const h = time.getHours()
-                const m = time.getMinutes()
-                const timeStr = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`
-                if (currentType === 'start') {
-                  setForm({ ...form, startTime: timeStr })
-                } else {
-                  setForm({ ...form, endTime: timeStr })
-                }
-              }
-            }}
-          />
-        )
       )}
 
       {/* ── Payment QR Code Polling Modal ── */}
