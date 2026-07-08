@@ -46,6 +46,8 @@ export default function BookingScreen({ navigation, route }) {
   const [paymentModalVisible, setPaymentModalVisible] = useState(false)
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [secondsLeft, setSecondsLeft] = useState(PAYMENT_TIMEOUT_SECONDS)
+  const [qrImageStatus, setQrImageStatus] = useState('loading') // 'loading' | 'loaded' | 'error'
+  const [qrRetryKey, setQrRetryKey] = useState(0)
 
   // Slots Mapping
   const [selectedFloor, setSelectedFloor] = useState(null)
@@ -69,6 +71,8 @@ export default function BookingScreen({ navigation, route }) {
       setDraftDate(null)
       setDraftTime(null)
       setSecondsLeft(PAYMENT_TIMEOUT_SECONDS)
+      setQrImageStatus('loading')
+      setQrRetryKey(0)
     })
     return unsubscribe
   }, [navigation])
@@ -131,7 +135,10 @@ export default function BookingScreen({ navigation, route }) {
   // Generate the SePay bank-transfer QR for the newly created booking
   const initiatePaymentMut = useMutation({
     mutationFn: (bookingId) => paymentAPI.initiateBookingBankTransfer({ bookingId }),
-    onSuccess: (res) => setPaymentInfo(res.data.data),
+    onSuccess: (res) => {
+      setQrImageStatus('loading')
+      setPaymentInfo(res.data.data)
+    },
     onError: (err) => Toast.show({ type: 'error', text1: 'Không tạo được mã QR thanh toán', text2: err.response?.data?.message }),
   })
 
@@ -560,7 +567,32 @@ export default function BookingScreen({ navigation, route }) {
               {/* QR Image */}
               <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 16, ...SHADOWS.card }}>
                 {paymentInfo?.qrUrl ? (
-                  <Image source={{ uri: paymentInfo.qrUrl }} style={{ width: 220, height: 220 }} resizeMode="contain" />
+                  <View style={{ width: 220, height: 220 }}>
+                    <Image
+                      key={qrRetryKey}
+                      source={{ uri: paymentInfo.qrUrl }}
+                      style={{ width: 220, height: 220 }}
+                      resizeMode="contain"
+                      onLoadStart={() => setQrImageStatus('loading')}
+                      onLoad={() => setQrImageStatus('loaded')}
+                      onError={() => setQrImageStatus('error')}
+                    />
+                    {qrImageStatus !== 'loaded' && (
+                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#fff' }}>
+                        {qrImageStatus === 'error' ? (
+                          <>
+                            <Ionicons name="alert-circle-outline" size={40} color={COLORS.danger} />
+                            <Text style={{ fontSize: SIZES.fontXs + 1, color: COLORS.textSecondary, textAlign: 'center', paddingHorizontal: 10 }}>
+                              Không tải được ảnh mã QR
+                            </Text>
+                            <Button title="Tải lại" size="sm" onPress={() => { setQrImageStatus('loading'); setQrRetryKey(k => k + 1) }} />
+                          </>
+                        ) : (
+                          <ActivityIndicator size="large" color={COLORS.primary} />
+                        )}
+                      </View>
+                    )}
+                  </View>
                 ) : initiatePaymentMut.isError ? (
                   <View style={{ width: 220, height: 220, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                     <Ionicons name="alert-circle-outline" size={40} color={COLORS.danger} />
