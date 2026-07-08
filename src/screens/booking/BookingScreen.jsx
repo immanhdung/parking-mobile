@@ -169,7 +169,7 @@ export default function BookingScreen({ navigation, route }) {
     }
   }, [paymentModalVisible, paymentInfo, createdBooking])
 
-  const estFee = form.vehicleType ? calcEstimatedFee(form.startTime, form.endTime, form.vehicleType.pricing?.hourlyRate) : 0
+  const estFee = form.vehicleType ? calcEstimatedFee(form.scheduledDate, form.startTime, form.endTime, form.vehicleType.pricing) : 0
   const canNext = () => {
     if (step === 0) return !!form.parkingLot && !!form.vehicleType && !!selectedSlot
     if (step === 1) return !!form.vehicleInfo.licensePlate.trim() && !!form.scheduledDate
@@ -283,7 +283,7 @@ export default function BookingScreen({ navigation, route }) {
                           <Text style={{ fontSize: 20 }}>{VehicleEmoji(vt.code)}</Text>
                           <View>
                             <Text style={{ fontSize: SIZES.fontSm, fontWeight: '700', color: form.vehicleType?._id === vt._id ? COLORS.primary : (dark ? COLORS.dark.text : COLORS.text) }}>{vt.name}</Text>
-                            <Text style={{ fontSize: 10, color: COLORS.textTertiary }}>{formatCurrency(vt.pricing?.hourlyRate)}/giờ</Text>
+                            <Text style={{ fontSize: 10, color: COLORS.textTertiary }}>{formatCurrency(vt.pricing?.dayBlockRate)}/4h</Text>
                           </View>
                         </View>
                       </TouchableOpacity>
