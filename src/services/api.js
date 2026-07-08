@@ -53,7 +53,13 @@ export const parkingLotAPI = {
 }
 export const floorAPI = { getAll: (params) => api.get('/floors', { params }) }
 export const zoneAPI = { getAll: (params) => api.get('/zones', { params }) }
-export const vehicleTypeAPI = { getAll: () => api.get('/vehicle-types') }
+export const vehicleTypeAPI = {
+  getAll: (params) => api.get('/vehicle-types', { params }),
+  getById: (id) => api.get(`/vehicle-types/${id}`),
+  create: (d) => api.post('/vehicle-types', d),
+  update: (id, d) => api.put(`/vehicle-types/${id}`, d),
+  delete: (id) => api.delete(`/vehicle-types/${id}`),
+}
 export const slotAPI = {
   findAvailable: (params) => api.get('/parking-slots/available', { params }),
   getFloorMap: (floorId) => api.get(`/parking-slots/floor-map/${floorId}`),
@@ -72,6 +78,8 @@ export const paymentAPI = {
   getAll: (params) => api.get('/payments', { params }),
   getById: (id) => api.get(`/payments/${id}`),
   initiateMomo: (d) => api.post('/payments/momo/initiate', d),
+  initiateBookingBankTransfer: (d) => api.post('/payments/bank-transfer/booking/initiate', d),
+  checkBankTransferStatus: (id) => api.get(`/payments/bank-transfer/${id}/status`),
 }
 export const notificationAPI = {
   getAll: (params) => api.get('/notifications', { params }),

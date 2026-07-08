@@ -44,6 +44,7 @@ import AdminHomeScreen from '../screens/admin/AdminHomeScreen'
 import UserManagementScreen from '../screens/admin/UserManagementScreen'
 import PermissionsScreen from '../screens/admin/PermissionsScreen'
 import SystemConfigScreen from '../screens/admin/SystemConfigScreen'
+import VehicleTypesScreen from '../screens/admin/VehicleTypesScreen'
 import ReportsScreen from '../screens/admin/ReportsScreen'
 
 const Tab = createBottomTabNavigator()
@@ -144,6 +145,7 @@ function SystemConfigStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="SystemConfig" component={SystemConfigScreen} />
+      <Stack.Screen name="VehicleTypes" component={VehicleTypesScreen} />
     </Stack.Navigator>
   )
 }

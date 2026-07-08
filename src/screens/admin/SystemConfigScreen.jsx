@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { View, Text, ScrollView, Switch, useColorScheme, KeyboardAvoidingView, Platform } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import Toast from 'react-native-toast-message'
 import { COLORS, SIZES } from '../../utils/theme'
 import { Input, ScreenHeader, Button, Card } from '../../components/common'
@@ -10,8 +11,6 @@ export default function SystemConfigScreen({ navigation }) {
   const [loading, setLoading] = useState(false)
   const [config, setConfig] = useState({
     systemName: 'ParkSmart',
-    carRate: '15000',
-    motorbikeRate: '5000',
     maxHours: '24',
     supportEmail: 'support@parksmart.com',
     maintenanceMode: false
@@ -65,30 +64,15 @@ export default function SystemConfigScreen({ navigation }) {
           />
         </Card>
 
-        <Card>
-          <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: COLORS.primary, marginBottom: 16 }}>Biểu phí mặc định (/giờ)</Text>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <View style={{ flex: 1 }}>
-              <Input 
-                label="Giá đỗ ô tô (VND)" 
-                value={config.carRate} 
-                onChangeText={v => setConfig({ ...config, carRate: v })} 
-                placeholder="15000" 
-                icon="car-outline" 
-                keyboardType="numeric" 
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Input 
-                label="Giá đỗ xe máy (VND)" 
-                value={config.motorbikeRate} 
-                onChangeText={v => setConfig({ ...config, motorbikeRate: v })} 
-                placeholder="5000" 
-                icon="bicycle-outline" 
-                keyboardType="numeric" 
-              />
-            </View>
+        <Card onPress={() => navigation.navigate('VehicleTypes')} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primaryBg, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="car-sport-outline" size={22} color={COLORS.primary} />
           </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>Loại xe & giá gửi</Text>
+            <Text style={{ fontSize: SIZES.fontXs + 1, color: COLORS.textSecondary, marginTop: 2 }}>Thêm/sửa loại phương tiện, biểu phí gửi xe theo giờ, ngày, tháng</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
         </Card>
 
         <Card>

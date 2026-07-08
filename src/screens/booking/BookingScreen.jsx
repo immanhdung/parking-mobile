@@ -5,7 +5,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Toast from 'react-native-toast-message'
 import DateTimePicker from '@react-native-community/datetimepicker'
-import { parkingLotAPI, vehicleTypeAPI, slotAPI, bookingAPI, floorAPI } from '../../services/api'
+import { parkingLotAPI, vehicleTypeAPI, slotAPI, bookingAPI, floorAPI, paymentAPI } from '../../services/api'
 import { Button, Card, Input, ScreenHeader, Skeleton, Divider, Badge } from '../../components/common'
 import { COLORS, SIZES, SHADOWS } from '../../utils/theme'
 import { formatCurrency, calcEstimatedFee } from '../../utils/helpers'
@@ -38,6 +38,7 @@ export default function BookingScreen({ navigation, route }) {
   const [timePickerType, setTimePickerType] = useState(null) // 'start' | 'end' | null
   const [createdBooking, setCreatedBooking] = useState(null)
   const [paymentModalVisible, setPaymentModalVisible] = useState(false)
+  const [paymentInfo, setPaymentInfo] = useState(null)
 
   // Slots Mapping
   const [selectedFloor, setSelectedFloor] = useState(null)
@@ -55,6 +56,9 @@ export default function BookingScreen({ navigation, route }) {
       })
       setSelectedFloor(null)
       setSelectedSlot(null)
+      setCreatedBooking(null)
+      setPaymentInfo(null)
+      setPaymentModalVisible(false)
     })
     return unsubscribe
   }, [navigation])
@@ -109,47 +113,54 @@ export default function BookingScreen({ navigation, route }) {
       qc.invalidateQueries(['my-bookings-home'])
       setCreatedBooking(res.data.data)
       setPaymentModalVisible(true)
+      initiatePaymentMut.mutate(res.data.data._id)
     },
     onError: (err) => Toast.show({ type: 'error', text1: 'Đặt chỗ thất bại', text2: err.response?.data?.message }),
   })
 
-  // Polling check for payment status
+  // Generate the SePay bank-transfer QR for the newly created booking
+  const initiatePaymentMut = useMutation({
+    mutationFn: (bookingId) => paymentAPI.initiateBookingBankTransfer({ bookingId }),
+    onSuccess: (res) => setPaymentInfo(res.data.data),
+    onError: (err) => Toast.show({ type: 'error', text1: 'Không tạo được mã QR thanh toán', text2: err.response?.data?.message }),
+  })
+
+  const cancelMut = useMutation({
+    mutationFn: () => bookingAPI.cancel(createdBooking._id, { reason: 'Người dùng hủy trước khi thanh toán' }),
+    onSettled: () => {
+      setPaymentModalVisible(false)
+      setCreatedBooking(null)
+      setPaymentInfo(null)
+      qc.invalidateQueries(['my-bookings-home'])
+    },
+  })
+
+  // Polling check for payment status against the SePay bank-transfer payment
   useEffect(() => {
     let intervalId
-    if (paymentModalVisible && createdBooking) {
+    const paymentId = paymentInfo?.payment?._id
+    if (paymentModalVisible && paymentId) {
       intervalId = setInterval(async () => {
         try {
-          const { data } = await bookingAPI.getById(createdBooking._id)
-          const booking = data.data
-          if (booking.paymentStatus === 'paid' || booking.status === 'approved') {
+          const { data } = await paymentAPI.checkBankTransferStatus(paymentId)
+          if (data.data.isPaid) {
             clearInterval(intervalId)
             setPaymentModalVisible(false)
+            const paidBooking = { ...createdBooking, paymentStatus: 'paid', status: 'approved' }
             setCreatedBooking(null)
+            setPaymentInfo(null)
             qc.invalidateQueries(['my-bookings-home'])
-            navigation.navigate('BookingSuccess', { booking })
+            navigation.navigate('BookingSuccess', { booking: paidBooking })
           }
         } catch (err) {
-          console.error('Error polling booking payment status:', err)
+          console.error('Error polling payment status:', err)
         }
       }, 3000)
     }
     return () => {
       if (intervalId) clearInterval(intervalId)
     }
-  }, [paymentModalVisible, createdBooking])
-
-  const handleSimulatePayment = () => {
-    if (!createdBooking) return
-    const mockPaidBooking = {
-      ...createdBooking,
-      paymentStatus: 'paid',
-      status: 'approved'
-    }
-    setPaymentModalVisible(false)
-    setCreatedBooking(null)
-    qc.invalidateQueries(['my-bookings-home'])
-    navigation.navigate('BookingSuccess', { booking: mockPaidBooking })
-  }
+  }, [paymentModalVisible, paymentInfo, createdBooking])
 
   const estFee = form.vehicleType ? calcEstimatedFee(form.startTime, form.endTime, form.vehicleType.pricing?.hourlyRate) : 0
   const canNext = () => {
@@ -507,42 +518,63 @@ export default function BookingScreen({ navigation, route }) {
       {/* ── Payment QR Code Polling Modal ── */}
       <Modal visible={paymentModalVisible} transparent animationType="fade">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <View style={{ width: '100%', backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderRadius: 24, padding: 24, gap: 16, alignItems: 'center', ...SHADOWS.md }}>
-            <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>Thanh toán đặt chỗ</Text>
+          <View style={{ width: '100%', maxHeight: '90%', backgroundColor: dark ? COLORS.dark.bgCard : COLORS.white, borderRadius: 24, ...SHADOWS.md }}>
+            <ScrollView contentContainerStyle={{ padding: 24, gap: 16, alignItems: 'center' }} showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: SIZES.fontXl, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>Thanh toán đặt chỗ</Text>
 
-            <View style={{ width: '100%', backgroundColor: COLORS.primaryBg, borderRadius: 16, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: COLORS.primaryBg2 }}>
-              <Text style={{ fontSize: SIZES.fontXs, color: COLORS.textSecondary }}>TỔNG TIỀN THANH TOÁN</Text>
-              <Text style={{ fontSize: 24, fontWeight: '900', color: COLORS.primary, marginTop: 4 }}>
-                {formatCurrency(createdBooking?.estimatedFee || estFee)}
+              <View style={{ width: '100%', backgroundColor: COLORS.primaryBg, borderRadius: 16, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: COLORS.primaryBg2 }}>
+                <Text style={{ fontSize: SIZES.fontXs, color: COLORS.textSecondary }}>TỔNG TIỀN THANH TOÁN</Text>
+                <Text style={{ fontSize: 24, fontWeight: '900', color: COLORS.primary, marginTop: 4 }}>
+                  {formatCurrency(paymentInfo?.amount ?? createdBooking?.estimatedFee ?? estFee)}
+                </Text>
+              </View>
+
+              <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary, textAlign: 'center' }}>
+                Quét mã QR bằng app ngân hàng để chuyển khoản cho mã đặt chỗ <Text style={{ fontWeight: '700', color: COLORS.primary }}>{createdBooking?.bookingCode}</Text>
               </Text>
-            </View>
 
-            <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary, textAlign: 'center' }}>
-              Vui lòng quét mã QR MoMo dưới đây để thanh toán cho mã đặt chỗ <Text style={{ fontWeight: '700', color: COLORS.primary }}>{createdBooking?.bookingCode}</Text>
-            </Text>
+              {/* QR Image */}
+              <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 16, ...SHADOWS.card }}>
+                {paymentInfo?.qrUrl ? (
+                  <Image source={{ uri: paymentInfo.qrUrl }} style={{ width: 220, height: 220 }} resizeMode="contain" />
+                ) : (
+                  <ActivityIndicator size="large" color={COLORS.primary} style={{ width: 220, height: 220 }} />
+                )}
+              </View>
 
-            {/* QR Image */}
-            <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 16, ...SHADOWS.card }}>
-              {createdBooking?.qrCode ? (
-                <Image source={{ uri: createdBooking.qrCode }} style={{ width: 180, height: 180 }} resizeMode="contain" />
-              ) : (
-                <ActivityIndicator size="large" color={COLORS.primary} style={{ width: 180, height: 180 }} />
+              {/* Bank transfer details for manual transfer */}
+              {paymentInfo && (
+                <View style={{ width: '100%', backgroundColor: dark ? COLORS.dark.bgSecondary : '#f8fafc', borderRadius: 14, padding: 14, gap: 8 }}>
+                  {[
+                    { label: 'Ngân hàng', value: paymentInfo.bankInfo?.bankName },
+                    { label: 'Số tài khoản', value: paymentInfo.bankInfo?.accountNumber },
+                    { label: 'Chủ tài khoản', value: paymentInfo.bankInfo?.accountName },
+                    { label: 'Nội dung CK', value: paymentInfo.transferContent },
+                  ].map((row, i) => (
+                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: SIZES.fontXs, color: COLORS.textSecondary }}>{row.label}</Text>
+                      <Text style={{ fontSize: SIZES.fontXs, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>{row.value || '—'}</Text>
+                    </View>
+                  ))}
+                  <Text style={{ fontSize: 10, color: COLORS.warning, marginTop: 2 }}>
+                    ⚠️ Vui lòng giữ nguyên nội dung chuyển khoản để hệ thống tự động xác nhận.
+                  </Text>
+                </View>
               )}
-            </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={{ fontSize: SIZES.fontXs + 1, color: COLORS.textSecondary, fontWeight: '600' }}>
-                Đang chờ xác nhận giao dịch từ MoMo...
-              </Text>
-            </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+                <Text style={{ fontSize: SIZES.fontXs + 1, color: COLORS.textSecondary, fontWeight: '600' }}>
+                  Đang chờ xác nhận chuyển khoản...
+                </Text>
+              </View>
 
-            <Divider style={{ width: '100%', marginVertical: 4 }} />
+              <Divider style={{ width: '100%', marginVertical: 4 }} />
 
-            <View style={{ width: '100%', gap: 10 }}>
-              <Button title="Tôi đã thanh toán (Simulate)" onPress={handleSimulatePayment} size="md" />
-              <Button title="Hủy đặt chỗ" variant="outline" onPress={() => { setPaymentModalVisible(false); setCreatedBooking(null) }} size="md" />
-            </View>
+              <View style={{ width: '100%', gap: 10 }}>
+                <Button title="Hủy đặt chỗ" variant="outline" onPress={() => cancelMut.mutate()} loading={cancelMut.isPending} size="md" />
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
