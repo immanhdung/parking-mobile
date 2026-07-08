@@ -12,6 +12,7 @@ import { formatCurrency, calcEstimatedFee } from '../../utils/helpers'
 
 const STEPS = ['Chọn bãi & vị trí', 'Thông tin xe', 'Xác nhận']
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const PAYMENT_TIMEOUT_SECONDS = 5 * 60
 
 const STATUS_STYLE = {
   available: { bg: '#f0fdf4', border: '#86efac', text: '#15803d' },
@@ -44,6 +45,7 @@ export default function BookingScreen({ navigation, route }) {
   const [createdBooking, setCreatedBooking] = useState(null)
   const [paymentModalVisible, setPaymentModalVisible] = useState(false)
   const [paymentInfo, setPaymentInfo] = useState(null)
+  const [secondsLeft, setSecondsLeft] = useState(PAYMENT_TIMEOUT_SECONDS)
 
   // Slots Mapping
   const [selectedFloor, setSelectedFloor] = useState(null)
@@ -66,6 +68,7 @@ export default function BookingScreen({ navigation, route }) {
       setPaymentModalVisible(false)
       setDraftDate(null)
       setDraftTime(null)
+      setSecondsLeft(PAYMENT_TIMEOUT_SECONDS)
     })
     return unsubscribe
   }, [navigation])
@@ -168,6 +171,21 @@ export default function BookingScreen({ navigation, route }) {
       if (intervalId) clearInterval(intervalId)
     }
   }, [paymentModalVisible, paymentInfo, createdBooking])
+
+  // Countdown: cancel the pending booking automatically if payment isn't confirmed in time
+  useEffect(() => {
+    if (!paymentModalVisible) return
+    setSecondsLeft(PAYMENT_TIMEOUT_SECONDS)
+    const tickId = setInterval(() => setSecondsLeft(s => s - 1), 1000)
+    return () => clearInterval(tickId)
+  }, [paymentModalVisible])
+
+  useEffect(() => {
+    if (paymentModalVisible && secondsLeft === 0 && createdBooking) {
+      Toast.show({ type: 'error', text1: 'Hết thời gian thanh toán', text2: 'Đặt chỗ đã tự động bị hủy do quá 5 phút chưa chuyển khoản.' })
+      cancelMut.mutate()
+    }
+  }, [secondsLeft, paymentModalVisible])
 
   const estFee = form.vehicleType ? calcEstimatedFee(form.scheduledDate, form.startTime, form.endTime, form.vehicleType.pricing) : 0
   const canNext = () => {
@@ -543,6 +561,19 @@ export default function BookingScreen({ navigation, route }) {
               <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 16, ...SHADOWS.card }}>
                 {paymentInfo?.qrUrl ? (
                   <Image source={{ uri: paymentInfo.qrUrl }} style={{ width: 220, height: 220 }} resizeMode="contain" />
+                ) : initiatePaymentMut.isError ? (
+                  <View style={{ width: 220, height: 220, alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                    <Ionicons name="alert-circle-outline" size={40} color={COLORS.danger} />
+                    <Text style={{ fontSize: SIZES.fontXs + 1, color: COLORS.textSecondary, textAlign: 'center' }}>
+                      Không tạo được mã QR thanh toán
+                    </Text>
+                    <Button
+                      title="Thử lại"
+                      size="sm"
+                      onPress={() => createdBooking && initiatePaymentMut.mutate(createdBooking._id)}
+                      loading={initiatePaymentMut.isPending}
+                    />
+                  </View>
                 ) : (
                   <ActivityIndicator size="large" color={COLORS.primary} style={{ width: 220, height: 220 }} />
                 )}
@@ -574,6 +605,10 @@ export default function BookingScreen({ navigation, route }) {
                   Đang chờ xác nhận chuyển khoản...
                 </Text>
               </View>
+
+              <Text style={{ fontSize: SIZES.fontXs + 1, color: secondsLeft <= 60 ? COLORS.danger : COLORS.textSecondary, fontWeight: '700' }}>
+                Tự động hủy sau {String(Math.max(Math.floor(secondsLeft / 60), 0)).padStart(2, '0')}:{String(Math.max(secondsLeft, 0) % 60).padStart(2, '0')}
+              </Text>
 
               <Divider style={{ width: '100%', marginVertical: 4 }} />
 
