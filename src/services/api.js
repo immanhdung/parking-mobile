@@ -1,7 +1,7 @@
 import axios from 'axios'
 import storage from '../utils/storage'
 
-const BASE_URL = 'https://web-production-a1e70.up.railway.app/api/v1'
+const BASE_URL = 'https://parking-backend-production-1353.up.railway.app/api/v1'
 
 const api = axios.create({ baseURL: BASE_URL, timeout: 30000, headers: { 'Content-Type': 'application/json' } })
 
