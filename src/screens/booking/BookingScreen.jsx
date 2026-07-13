@@ -243,7 +243,10 @@ export default function BookingScreen({ navigation, route }) {
       DateTimePickerAndroid.open({
         value: getTimeObject(type === 'start' ? form.startTime : form.endTime),
         mode: 'time',
-        display: 'default',
+        // 'default' renders Android's 24h clock-face UI, which has a known ring-confusion bug:
+        // tapping a PM hour (13-24) on the outer ring can register as the same-angle inner-ring
+        // hour (1-12), e.g. 19:00 misread as 07:00. The spinner is an unambiguous HH:MM wheel.
+        display: 'spinner',
         is24Hour: true,
         onChange: (event, time) => {
           if (event.type === 'set' && time) {
@@ -504,6 +507,7 @@ export default function BookingScreen({ navigation, route }) {
                 display="spinner"
                 minimumDate={new Date()}
                 maximumDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
+                locale="vi-VN"
                 onChange={(event, date) => { if (date) setDraftDate(date) }}
                 themeVariant={dark ? 'dark' : 'light'}
               />
@@ -538,6 +542,9 @@ export default function BookingScreen({ navigation, route }) {
                 mode="time"
                 display="spinner"
                 is24Hour={true}
+                // is24Hour is Android-only in this library — on iOS the 12h/24h format
+                // is dictated entirely by device locale, so force a 24h locale explicitly.
+                locale="vi-VN"
                 onChange={(event, time) => { if (time) setDraftTime(time) }}
                 themeVariant={dark ? 'dark' : 'light'}
               />
