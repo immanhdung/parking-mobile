@@ -286,6 +286,8 @@ function MainTabs() {
       <Tab.Screen name="BookingStack" component={BookingStack} />
       <Tab.Screen name="HistoryStack" component={HistoryStack} />
       <Tab.Screen name="ProfileStack" component={ProfileStack} />
+      {/* Not part of CustomTabBar's USER_TABS — reachable only via navigation.navigate('PaymentStack') from quick actions. */}
+      <Tab.Screen name="PaymentStack" component={PaymentStack} options={{ tabBarButton: () => null }} />
     </Tab.Navigator>
   )
 }
