@@ -3,9 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl, useColorSchem
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Animated, { FadeInDown } from 'react-native-reanimated'
+import { useQuery } from '@tanstack/react-query'
 import { COLORS, SIZES, SHADOWS } from '../../utils/theme'
 import { Card, Badge, SectionHeader, StatCard } from '../../components/common'
 import useAuthStore from '../../store/authStore'
+import { reportsAPI } from '../../services/api'
+import { formatCurrency } from '../../utils/helpers'
 
 export default function AdminHomeScreen({ navigation }) {
   const { user } = useAuthStore()
@@ -13,15 +16,21 @@ export default function AdminHomeScreen({ navigation }) {
   const dark = scheme === 'dark'
   const [refreshing, setRefreshing] = useState(false)
 
+  const { data: dashboard, isLoading, refetch } = useQuery({
+    queryKey: ['admin-dashboard-stats'],
+    queryFn: () => reportsAPI.getDashboard().then(r => r.data.data),
+  })
+
   const onRefresh = () => {
     setRefreshing(true)
-    setTimeout(() => setRefreshing(false), 800)
+    refetch().finally(() => setRefreshing(false))
   }
 
   const ADMIN_TASKS = [
-    { icon: 'people-outline', label: 'Quản lý tài khoản', color: COLORS.primary, bg: COLORS.primaryBg, screen: 'UserManagement' },
+    { icon: 'people-outline', label: 'Tài khoản', color: COLORS.primary, bg: COLORS.primaryBg, screen: 'UserManagement' },
     { icon: 'shield-checkmark-outline', label: 'Phân quyền', color: '#7c3aed', bg: '#f5f3ff', screen: 'Permissions' },
-    { icon: 'settings-outline', label: 'Cấu hình hệ thống', color: '#059669', bg: '#f0fdf4', screen: 'SystemConfig' },
+    { icon: 'settings-outline', label: 'Cấu hình', color: '#059669', bg: '#f0fdf4', screen: 'SystemConfig' },
+    { icon: 'stats-chart-outline', label: 'Báo cáo', color: '#dc2626', bg: '#fef2f2', screen: 'Reports' },
   ]
 
   const RECENT_ACTIVITIES = [
@@ -67,12 +76,12 @@ export default function AdminHomeScreen({ navigation }) {
         <Animated.View entering={FadeInDown.delay(300)} style={{ gap: 12 }}>
           <SectionHeader title="Số liệu hệ thống" />
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <StatCard title="Tổng tài khoản" value="1,248" icon="people" color={COLORS.primary} bg={COLORS.primaryBg} />
-            <StatCard title="Số lượt đặt chỗ" value="452" icon="calendar" color="#7c3aed" bg="#f5f3ff" />
+            <StatCard title="Tổng thành viên" value={isLoading ? '...' : String(dashboard?.totalUsers || 0)} icon="people" color={COLORS.primary} bg={COLORS.primaryBg} />
+            <StatCard title="Phiên hôm nay" value={isLoading ? '...' : String(dashboard?.todaySessions || 0)} icon="calendar" color="#7c3aed" bg="#f5f3ff" />
           </View>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <StatCard title="Tổng doanh thu" value="14.2Mđ" icon="cash" color="#059669" bg="#f0fdf4" />
-            <StatCard title="Tỷ lệ hoạt động" value="98.4%" icon="trending-up" color="#d97706" bg="#fffbeb" />
+            <StatCard title="Doanh thu hôm nay" value={isLoading ? '...' : formatCurrency(dashboard?.todayRevenue || 0)} icon="cash" color="#059669" bg="#f0fdf4" />
+            <StatCard title="Công suất đỗ" value={isLoading ? '...' : `${((dashboard?.occupancyRate || 0) * 100).toFixed(0)}%`} icon="trending-up" color="#d97706" bg="#fffbeb" />
           </View>
         </Animated.View>
 

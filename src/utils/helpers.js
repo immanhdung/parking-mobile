@@ -28,10 +28,32 @@ export const formatDuration = (hours) => {
   if (m === 0) return `${h} giờ`
   return `${h}h ${m}p`
 }
-export const calcEstimatedFee = (startTime, endTime, hourlyRate) => {
-  if (!startTime || !endTime || !hourlyRate) return 0
+// Mirrors the backend's calculateParkingFee (parking-backend/src/utils/helpers.js):
+// 4-hour blocks, daytime (06:00–18:00) vs nighttime (18:00–06:00) rate, so the
+// estimate shown before booking matches what the server will actually charge.
+export const calcEstimatedFee = (scheduledDate, startTime, endTime, pricing) => {
+  if (!scheduledDate || !startTime || !endTime || !pricing?.dayBlockRate) return 0
   const [sh, sm] = startTime.split(':').map(Number)
   const [eh, em] = endTime.split(':').map(Number)
-  const hours = Math.max(0, (eh * 60 + em - sh * 60 - sm) / 60)
-  return Math.ceil(hours) * hourlyRate
+
+  const entry = new Date(scheduledDate)
+  entry.setHours(sh, sm, 0, 0)
+  let exit = new Date(scheduledDate)
+  exit.setHours(eh, em, 0, 0)
+  if (exit <= entry) exit = new Date(exit.getTime() + 24 * 60 * 60 * 1000)
+
+  const dayBlockRate = pricing.dayBlockRate
+  const nightBlockRate = pricing.nightBlockRate || dayBlockRate * 1.5
+
+  let fee = 0
+  let cursor = new Date(entry)
+  while (cursor < exit) {
+    const blockEnd = new Date(Math.min(exit.getTime(), cursor.getTime() + 4 * 60 * 60 * 1000))
+    const effectiveEnd = new Date(blockEnd.getTime() - 1)
+    const isStartNight = cursor.getHours() >= 18 || cursor.getHours() < 6
+    const isEndNight = effectiveEnd.getHours() >= 18 || effectiveEnd.getHours() < 6
+    fee += (isStartNight || isEndNight) ? nightBlockRate : dayBlockRate
+    cursor = new Date(cursor.getTime() + 4 * 60 * 60 * 1000)
+  }
+  return Math.round(fee)
 }

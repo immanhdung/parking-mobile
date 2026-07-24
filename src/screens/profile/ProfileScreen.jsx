@@ -69,12 +69,11 @@ export default function ProfileScreen({ navigation }) {
     ...(!isAdmin ? [{
       section: 'Lịch sử', items: [
         { icon: 'calendar-outline', label: 'Lịch sử đặt chỗ', action: () => navigation.navigate('HistoryStack') },
-        { icon: 'card-outline', label: 'Lịch sử thanh toán', action: () => navigation.navigate('PaymentStack') },
       ]
     }] : []),
     {
       section: 'Hỗ trợ', items: [
-        { icon: 'chatbubble-outline', label: 'Gửi phản hồi', action: () => navigation.navigate('Feedback') },
+        ...(!isAdmin ? [{ icon: 'chatbubble-outline', label: 'Gửi phản hồi', action: () => navigation.navigate('Feedback') }] : []),
         { icon: 'information-circle-outline', label: 'Về ứng dụng', action: () => Toast.show({ type: 'info', text1: 'ParkSmart v1.0.0' }) },
       ]
     },

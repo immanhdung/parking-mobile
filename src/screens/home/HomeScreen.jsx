@@ -46,7 +46,7 @@ export default function HomeScreen({ navigation }) {
       <LinearGradient colors={[COLORS.primary, '#1e40af', '#1d4ed8']} style={{ paddingTop: 56, paddingBottom: 32, paddingHorizontal: SIZES.screenPadding, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 }}>
         <Animated.View entering={FadeInDown.delay(100)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <View>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: SIZES.fontSm }}>Xin chào 👋</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: SIZES.fontSm }}>Xin chào</Text>
             <Text style={{ color: '#fff', fontSize: SIZES.fontXxl, fontWeight: '800', marginTop: 2 }}>{firstName}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
