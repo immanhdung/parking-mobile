@@ -27,9 +27,9 @@ export default function AdminHomeScreen({ navigation }) {
   }
 
   const ADMIN_TASKS = [
-    { icon: 'people-outline', label: 'Tài khoản', color: COLORS.primary, bg: COLORS.primaryBg, screen: 'UserManagement' },
-    { icon: 'shield-checkmark-outline', label: 'Phân quyền', color: '#7c3aed', bg: '#f5f3ff', screen: 'Permissions' },
-    { icon: 'settings-outline', label: 'Cấu hình', color: '#059669', bg: '#f0fdf4', screen: 'SystemConfig' },
+    { icon: 'people-outline', label: 'Tài khoản', color: COLORS.primary, bg: COLORS.primaryBg, screen: 'UserManagementStack', params: { screen: 'UserManagement' } },
+    { icon: 'shield-checkmark-outline', label: 'Phân quyền', color: '#7c3aed', bg: '#f5f3ff', screen: 'PermissionsStack', params: { screen: 'Permissions' } },
+    { icon: 'settings-outline', label: 'Cấu hình', color: '#059669', bg: '#f0fdf4', screen: 'SystemConfigStack', params: { screen: 'SystemConfig' } },
     { icon: 'stats-chart-outline', label: 'Báo cáo', color: '#dc2626', bg: '#fef2f2', screen: 'Reports' },
   ]
 
@@ -70,7 +70,7 @@ export default function AdminHomeScreen({ navigation }) {
           <Text style={{ color: '#fff', fontSize: SIZES.fontSm, fontWeight: '600', flex: 1 }}>Trạng thái hệ thống: Hoạt động bình thường</Text>
         </Animated.View>
       </LinearGradient>
-
+      
       <View style={{ padding: SIZES.screenPadding, gap: 24 }}>
         {/* Stats Grid */}
         <Animated.View entering={FadeInDown.delay(300)} style={{ gap: 12 }}>
@@ -92,7 +92,7 @@ export default function AdminHomeScreen({ navigation }) {
             {ADMIN_TASKS.map((a, i) => (
               <TouchableOpacity 
                 key={i} 
-                onPress={() => navigation.navigate(a.screen)} 
+                onPress={() => navigation.navigate(a.screen, a.params)} 
                 activeOpacity={0.8} 
                 style={{ flex: 1, alignItems: 'center' }}
               >
