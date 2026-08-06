@@ -2,8 +2,6 @@ import axios from 'axios'
 import storage from '../utils/storage'
 
 const BASE_URL = 'https://parking-backend-ynok.onrender.com/api/v1'
-// const BASE_URL = 'http://192.168.1.15:5000/api/v1'
-// const BASE_URL = 'http://localhost:5000/api/v1'
 const api = axios.create({ baseURL: BASE_URL, timeout: 30000, headers: { 'Content-Type': 'application/json' } })
 
 api.interceptors.request.use(async (config) => {
