@@ -140,6 +140,17 @@ export default function BookingScreen({ navigation, route }) {
     return (h || 0) * 60 + (m || 0)
   }
 
+  const isTimeInPast = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return false
+
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const [hours, minutes] = timeStr.split(':').map(Number)
+    if (![year, month, day, hours, minutes].every(Number.isFinite)) return false
+
+    const selectedDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0)
+    return selectedDateTime < new Date()
+  }
+
   const addMinutesToTime = (timeStr, minsToAdd) => {
     if (!timeStr) return timeStr
     const [h, m] = timeStr.split(':').map(Number)
@@ -293,10 +304,11 @@ export default function BookingScreen({ navigation, route }) {
 
   const estFee = form.vehicleType ? calcEstimatedFee(form.scheduledDate, form.startTime, form.endTime, form.vehicleType.pricing) : 0
   const overlapCheck = checkTimeOverlap()
+  const startTimeInPast = isTimeInPast(form.scheduledDate, form.startTime)
   const canNext = () => {
     if (step === 0) return !!form.parkingLot && !!form.vehicleType && !!selectedSlot
-    if (step === 1) return !!form.vehicleInfo.licensePlate.trim() && !!form.scheduledDate && !overlapCheck?.conflict && !overlapCheck?.invalidTime
-    return !overlapCheck?.conflict && !overlapCheck?.invalidTime
+    if (step === 1) return !!form.vehicleInfo.licensePlate.trim() && !!form.scheduledDate && !startTimeInPast && !overlapCheck?.conflict && !overlapCheck?.invalidTime
+    return !startTimeInPast && !overlapCheck?.conflict && !overlapCheck?.invalidTime
   }
 
   const handleNextOrSubmit = () => {
@@ -347,6 +359,21 @@ export default function BookingScreen({ navigation, route }) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   }
 
+  const formatPickerTime = (event, dateObj) => {
+    const timestamp = event?.nativeEvent?.timestamp
+    const utcOffset = event?.nativeEvent?.utcOffset
+
+    // The native Android picker can return a timestamp interpreted in a different
+    // timezone from the JavaScript runtime. Reconstruct its wall-clock time from
+    // the offset so a selected 14:00 never becomes 07:00 in UTC+7.
+    if (Number.isFinite(timestamp) && Number.isFinite(utcOffset)) {
+      const pickerTime = new Date(timestamp + utcOffset * 60 * 1000)
+      return `${String(pickerTime.getUTCHours()).padStart(2, '0')}:${String(pickerTime.getUTCMinutes()).padStart(2, '0')}`
+    }
+
+    return formatTimeStr(dateObj)
+  }
+
   const getDateObject = (dateStr) => {
     if (!dateStr) return new Date()
     const parts = dateStr.split('-').map(n => parseInt(n, 10))
@@ -359,9 +386,15 @@ export default function BookingScreen({ navigation, route }) {
   const getTimeObject = (timeStr) => {
     if (!timeStr) return new Date()
     const parts = timeStr.split(':').map(n => parseInt(n, 10))
-    const now = new Date()
     const h = isNaN(parts[0]) ? 8 : parts[0]
     const m = isNaN(parts[1]) ? 0 : parts[1]
+
+    // A booking time is a wall-clock value, not an instant in time. On iOS,
+    // keep it in UTC and configure the picker to UTC so it cannot be shifted
+    // by the simulator/device timezone.
+    if (Platform.OS === 'ios') return new Date(Date.UTC(2000, 0, 1, h, m, 0, 0))
+
+    const now = new Date()
     now.setHours(h, m, 0, 0)
     return now
   }
@@ -399,7 +432,7 @@ export default function BookingScreen({ navigation, route }) {
         is24Hour: true,
         onChange: (event, time) => {
           if (event.type === 'set' && time) {
-            const timeStr = formatTimeStr(time)
+            const timeStr = formatPickerTime(event, time)
             setForm(f => type === 'start' ? { ...f, startTime: timeStr } : { ...f, endTime: timeStr })
           }
         },
@@ -694,7 +727,7 @@ export default function BookingScreen({ navigation, route }) {
                 </Card>
               )}
 
-              {isTimeInPast(form.scheduledDate, form.startTime) && (
+              {startTimeInPast && (
                 <Text style={{ color: COLORS.danger, fontSize: SIZES.fontSm, marginTop: -6 }}>
                   Giờ vào không được là thời điểm trong quá khứ, vui lòng chọn lại.
                 </Text>
@@ -791,8 +824,8 @@ export default function BookingScreen({ navigation, route }) {
                 </Text>
                 <TouchableOpacity onPress={() => {
                   if (draftTime) {
-                    const h = draftTime.getHours()
-                    const m = draftTime.getMinutes()
+                    const h = draftTime.getUTCHours()
+                    const m = draftTime.getUTCMinutes()
                     const timeStr = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`
                     if (timePickerType === 'start' && isTimeInPast(form.scheduledDate, timeStr)) {
                       Toast.show({ type: 'error', text1: 'Giờ vào không hợp lệ', text2: 'Vui lòng chọn giờ từ hiện tại trở đi.' })
@@ -811,6 +844,7 @@ export default function BookingScreen({ navigation, route }) {
                 mode="time"
                 display="spinner"
                 is24Hour={true}
+                timeZoneName="UTC"
                 // is24Hour is Android-only in this library — on iOS the 12h/24h format
                 // is dictated entirely by device locale, so force a 24h locale explicitly.
                 locale="vi-VN"
