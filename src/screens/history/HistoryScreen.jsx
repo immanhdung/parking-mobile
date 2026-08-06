@@ -52,41 +52,45 @@ export default function HistoryScreen({ navigation }) {
     sessions: [{ key: '', label: 'Tất cả' }, { key: 'active', label: 'Đang gửi' }, { key: 'completed', label: 'Hoàn thành' }],
   }
 
-  const BookingItem = ({ item, index }) => (
-    <Animated.View entering={FadeInDown.delay(index * 50)}>
-      <Card style={{ marginBottom: 12 }} onPress={() => navigation.navigate('BookingDetail', { bookingId: item._id })}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '700', fontFamily: 'monospace' }}>{item.bookingCode}</Text>
-            <Text style={{ fontSize: SIZES.fontLg, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginTop: 2 }}>{item.parkingLot?.name || '—'}</Text>
-          </View>
-          <Badge status={item.status} />
-        </View>
-        <View style={{ gap: 5 }}>
-          {[
-            { icon: 'calendar-outline', text: `${formatDate(item.scheduledDate)} · ${item.startTime} → ${item.endTime}` },
-            { icon: 'car-outline', text: `${item.vehicleInfo?.licensePlate || '—'} · ${item.vehicleType?.name || ''}` },
-            { icon: 'cash-outline', text: `Phí ước tính: ${formatCurrency(item.estimatedFee)}`, color: COLORS.primary },
-          ].map((row, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name={row.icon} size={13} color={COLORS.textTertiary} />
-              <Text style={{ fontSize: SIZES.fontSm, color: row.color || COLORS.textSecondary, fontWeight: row.color ? '700' : '400' }}>{row.text}</Text>
+  const BookingItem = ({ item, index }) => {
+    const slotCode = item.assignedSlot?.slotCode || item.assignedSlot?.code || item.slot?.slotCode || (typeof item.assignedSlot === 'string' ? item.assignedSlot : null)
+    return (
+      <Animated.View entering={FadeInDown.delay(index * 50)}>
+        <Card style={{ marginBottom: 12 }} onPress={() => navigation.navigate('BookingDetail', { bookingId: item._id })}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '700', fontFamily: 'monospace' }}>{item.bookingCode}</Text>
+              <Text style={{ fontSize: SIZES.fontLg, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginTop: 2 }}>{item.parkingLot?.name || '—'}</Text>
             </View>
-          ))}
-        </View>
-        {['pending', 'approved'].includes(item.status) && (
-          <View style={{ marginTop: 12, flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={() => navigation.navigate('BookingDetail', { bookingId: item._id })} style={{ flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: 'center' }}>
-              <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: SIZES.fontSm }}>Xem QR</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => cancelMut.mutate(item._id)} style={{ flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.danger, alignItems: 'center' }}>
-              <Text style={{ color: COLORS.danger, fontWeight: '600', fontSize: SIZES.fontSm }}>Hủy</Text>
-            </TouchableOpacity>
+            <Badge status={item.status} />
           </View>
-        )}
-      </Card>
-    </Animated.View>
-  )
+          <View style={{ gap: 5 }}>
+            {[
+              { icon: 'calendar-outline', text: `${formatDate(item.scheduledDate)} · ${item.startTime} → ${item.endTime}` },
+              { icon: 'car-outline', text: `${item.vehicleInfo?.licensePlate || '—'} · ${item.vehicleType?.name || ''}` },
+              { icon: 'grid-outline', text: `Slot: ${slotCode ? `Slot ${slotCode}` : 'Gán khi check-in'}` },
+              { icon: 'cash-outline', text: `Phí ước tính: ${formatCurrency(item.estimatedFee)}`, color: COLORS.primary },
+            ].map((row, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name={row.icon} size={13} color={COLORS.textTertiary} />
+                <Text style={{ fontSize: SIZES.fontSm, color: row.color || COLORS.textSecondary, fontWeight: row.color ? '700' : '400' }}>{row.text}</Text>
+              </View>
+            ))}
+          </View>
+          {['pending', 'approved'].includes(item.status) && (
+            <View style={{ marginTop: 12, flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={() => navigation.navigate('BookingDetail', { bookingId: item._id })} style={{ flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: 'center' }}>
+                <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: SIZES.fontSm }}>Xem QR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => cancelMut.mutate(item._id)} style={{ flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.danger, alignItems: 'center' }}>
+                <Text style={{ color: COLORS.danger, fontWeight: '600', fontSize: SIZES.fontSm }}>Hủy</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Card>
+      </Animated.View>
+    )
+  }
 
   const SessionItem = ({ item, index }) => (
     <Animated.View entering={FadeInDown.delay(index * 50)}>
@@ -123,7 +127,7 @@ export default function HistoryScreen({ navigation }) {
       <ScreenHeader title="Lịch sử" subtitle="Booking & lượt gửi xe" />
 
       {/* Tabs */}
-      <View style={{ flexDirection: 'row', paddingHorizontal: SIZES.screenPadding, gap: 8, marginBottom: 8 }}>
+      <View style={{ flexDirection: 'row', paddingHorizontal: SIZES.screenPadding, gap: 8, marginBottom: 10 }}>
         {TABS.map(t => (
           <TouchableOpacity key={t.key} onPress={() => { setTab(t.key); setStatusFilter(''); setPage(1) }} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: tab === t.key ? COLORS.primary : (dark ? COLORS.dark.bgSecondary : '#f1f5f9') }}>
             <Ionicons name={t.icon} size={16} color={tab === t.key ? '#fff' : COLORS.textTertiary} />
@@ -133,13 +137,15 @@ export default function HistoryScreen({ navigation }) {
       </View>
 
       {/* Status filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: SIZES.screenPadding, gap: 8, paddingBottom: 12 }}>
-        {STATUS_FILTERS[tab].map(s => (
-          <TouchableOpacity key={s.key} onPress={() => { setStatusFilter(s.key); setPage(1) }} style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: statusFilter === s.key ? COLORS.primary : (dark ? COLORS.dark.bgSecondary : '#f1f5f9'), borderWidth: 1.5, borderColor: statusFilter === s.key ? COLORS.primary : 'transparent' }}>
-            <Text style={{ fontSize: SIZES.fontSm, fontWeight: '600', color: statusFilter === s.key ? '#fff' : COLORS.textSecondary }}>{s.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={{ height: 42, marginBottom: 10 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: SIZES.screenPadding, gap: 8, alignItems: 'center' }}>
+          {STATUS_FILTERS[tab].map(s => (
+            <TouchableOpacity key={s.key} onPress={() => { setStatusFilter(s.key); setPage(1) }} style={{ paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, backgroundColor: statusFilter === s.key ? COLORS.primary : (dark ? COLORS.dark.bgSecondary : '#f1f5f9'), borderWidth: 1.5, borderColor: statusFilter === s.key ? COLORS.primary : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: SIZES.fontSm, fontWeight: '600', color: statusFilter === s.key ? '#fff' : COLORS.textSecondary }}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <FlatList
         data={currentData}

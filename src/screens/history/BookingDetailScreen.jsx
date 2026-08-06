@@ -96,7 +96,7 @@ export default function BookingDetailScreen({ route, navigation }) {
               { label: 'Biển số', value: b?.vehicleInfo?.licensePlate, icon: 'id-card-outline' },
               { label: 'Hãng xe', value: b?.vehicleInfo?.vehicleModel, icon: 'car-sport-outline' },
               { label: 'Màu xe', value: b?.vehicleInfo?.vehicleColor, icon: 'color-palette-outline' },
-              { label: 'Slot', value: b?.assignedSlot?.slotCode || 'Gán khi check-in', icon: 'grid-outline' },
+              { label: 'Slot', value: b?.assignedSlot?.slotCode || b?.assignedSlot?.code || b?.slot?.slotCode || (typeof b?.assignedSlot === 'string' ? b.assignedSlot : null) || 'Gán khi check-in', icon: 'grid-outline' },
             ].map((item, i) => (
               <View key={i}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 }}>
@@ -114,7 +114,7 @@ export default function BookingDetailScreen({ route, navigation }) {
 
         {/* Fee */}
         <Animated.View entering={FadeInDown.delay(500)}>
-          <Card style={{ backgroundColor: COLORS.primaryBg, borderColor: COLORS.primaryBg2, borderWidth: 1 }}>
+          <Card style={{ backgroundColor: dark ? COLORS.dark.bgCard : COLORS.primaryBg, borderColor: dark ? COLORS.dark.border : COLORS.primaryBg2, borderWidth: 1 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Ionicons name="cash-outline" size={20} color={COLORS.primary} />

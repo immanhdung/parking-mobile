@@ -28,7 +28,7 @@ export default function BookingSuccessScreen({ route, navigation }) {
 
         {/* Booking code */}
         <Animated.View entering={FadeInDown.delay(300)}>
-          <Card style={{ alignItems: 'center', backgroundColor: COLORS.primaryBg, borderColor: COLORS.primaryBg2, borderWidth: 1, marginBottom: 16 }}>
+          <Card style={{ alignItems: 'center', backgroundColor: dark ? COLORS.dark.bgCard : COLORS.primaryBg, borderColor: dark ? COLORS.dark.border : COLORS.primaryBg2, borderWidth: 1, marginBottom: 16 }}>
             <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary, marginBottom: 4 }}>Mã đặt chỗ</Text>
             <Text style={{ fontSize: 22, fontWeight: '800', color: COLORS.primary, letterSpacing: 2 }}>{booking?.bookingCode || '—'}</Text>
           </Card>
@@ -54,7 +54,7 @@ export default function BookingSuccessScreen({ route, navigation }) {
               { label: 'Ngày', value: formatDate(booking?.scheduledDate), icon: 'calendar-outline' },
               { label: 'Giờ', value: `${booking?.startTime} → ${booking?.endTime}`, icon: 'time-outline' },
               { label: 'Biển số', value: booking?.vehicleInfo?.licensePlate, icon: 'id-card-outline' },
-              { label: 'Slot', value: booking?.assignedSlot?.slotCode || 'Gán khi check-in', icon: 'grid-outline' },
+              { label: 'Slot', value: booking?.assignedSlot?.slotCode || booking?.assignedSlot?.code || booking?.slot?.slotCode || (typeof booking?.assignedSlot === 'string' ? booking.assignedSlot : null) || 'Gán khi check-in', icon: 'grid-outline' },
               { label: 'Phí ước tính', value: formatCurrency(booking?.estimatedFee), icon: 'cash-outline', color: COLORS.primary },
             ].map((item, i) => (
               <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: i < 5 ? 1 : 0, borderBottomColor: dark ? COLORS.dark.border : COLORS.border }}>
