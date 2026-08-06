@@ -2,7 +2,6 @@ import axios from 'axios'
 import storage from '../utils/storage'
 
 const BASE_URL = 'https://parking-backend-ynok.onrender.com/api/v1'
-
 const api = axios.create({ baseURL: BASE_URL, timeout: 30000, headers: { 'Content-Type': 'application/json' } })
 
 api.interceptors.request.use(async (config) => {
@@ -62,9 +61,10 @@ export const vehicleTypeAPI = {
 }
 export const slotAPI = {
   findAvailable: (params) => api.get('/parking-slots/available', { params }),
-  getFloorMap: (floorId) => api.get(`/parking-slots/floor-map/${floorId}`),
+  getFloorMap: (floorId, params) => api.get(`/parking-slots/floor-map/${floorId}`, { params }),
 }
 export const bookingAPI = {
+  getAll: (params) => api.get('/bookings', { params }),
   myBookings: (params) => api.get('/bookings/my', { params }),
   getById: (id) => api.get(`/bookings/${id}`),
   create: (d) => api.post('/bookings', d),
