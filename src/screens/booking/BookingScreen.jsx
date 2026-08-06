@@ -134,15 +134,36 @@ export default function BookingScreen({ navigation, route }) {
     enabled: !!form.parkingLot?._id && !!form.scheduledDate,
   })
 
+  const toMinutes = (tStr) => {
+    if (!tStr) return 0
+    const [h, m] = tStr.split(':').map(Number)
+    return (h || 0) * 60 + (m || 0)
+  }
+
+  const addMinutesToTime = (timeStr, minsToAdd) => {
+    if (!timeStr) return timeStr
+    const [h, m] = timeStr.split(':').map(Number)
+    let totalMins = (h || 0) * 60 + (m || 0) + minsToAdd
+    if (totalMins < 0) totalMins += 24 * 60
+    totalMins = totalMins % (24 * 60)
+    const newH = Math.floor(totalMins / 60)
+    const newM = totalMins % 60
+    return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`
+  }
+
   const checkTimeOverlap = () => {
     if (!form.startTime || !form.endTime) return null
-    if (form.startTime >= form.endTime) {
+    const formStartMins = toMinutes(form.startTime)
+    const formEndMins = toMinutes(form.endTime)
+
+    if (formStartMins >= formEndMins) {
       return { invalidTime: true, message: `Giờ vào (${form.startTime}) không được bằng hoặc muộn hơn giờ ra (${form.endTime}). Vui lòng điều chỉnh lại khung giờ!` }
     }
     if (!selectedSlot || !existingBookings || !Array.isArray(existingBookings) || existingBookings.length === 0) return null
 
     const targetSlotId = String(selectedSlot._id)
     const targetSlotCode = selectedSlot.slotCode
+    const BUFFER_MINUTES = 15
 
     const conflictingBooking = existingBookings.find(b => {
       if (['cancelled', 'failed'].includes(b.status)) return false
@@ -154,15 +175,19 @@ export default function BookingScreen({ navigation, route }) {
       const bDate = b.scheduledDate ? new Date(b.scheduledDate).toISOString().split('T')[0] : null
       if (bDate && bDate !== form.scheduledDate) return false
 
-      // Overlap formula: start1 < end2 && end1 > start2
-      return form.startTime < b.endTime && form.endTime > b.startTime
+      // Backend applies 15 min buffer to prevent overlap during car exit/entry
+      const bStartMins = toMinutes(b.startTime) - BUFFER_MINUTES
+      const bEndMins = toMinutes(b.endTime) + BUFFER_MINUTES
+
+      return formStartMins < bEndMins && formEndMins > bStartMins
     })
 
     if (conflictingBooking) {
+      const bEndWithBuffer = addMinutesToTime(conflictingBooking.endTime, BUFFER_MINUTES)
       return {
         conflict: true,
         booking: conflictingBooking,
-        message: `Slot ${selectedSlot.slotCode} đã có người đặt trong khung giờ ${conflictingBooking.startTime} → ${conflictingBooking.endTime}. Vui lòng chọn khung giờ khác!`,
+        message: `Slot ${selectedSlot.slotCode} đã có người đặt trong khung giờ ${conflictingBooking.startTime} → ${conflictingBooking.endTime} (cần thêm 15 phút ra bãi đến ${bEndWithBuffer}). Vui lòng chọn giờ vào từ ${bEndWithBuffer} trở đi!`,
       }
     }
 
@@ -304,21 +329,43 @@ export default function BookingScreen({ navigation, route }) {
 
   const VehicleEmoji = (code) => ({ CAR: '🚖', MOTORBIKE: '🏍️', BICYCLE: '🚲', ELECTRIC_BIKE: '⚡' }[code] || '🚚')
 
+  const formatDateStr = (dateObj) => {
+    if (!dateObj || isNaN(dateObj.getTime())) {
+      const now = new Date()
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    }
+    const y = dateObj.getFullYear()
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0')
+    const d = String(dateObj.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
+  const formatTimeStr = (dateObj) => {
+    if (!dateObj || isNaN(dateObj.getTime())) return '08:00'
+    const h = dateObj.getHours()
+    const m = dateObj.getMinutes()
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
   const getDateObject = (dateStr) => {
-    const d = new Date(dateStr)
-    return isNaN(d.getTime()) ? new Date() : d
+    if (!dateStr) return new Date()
+    const parts = dateStr.split('-').map(n => parseInt(n, 10))
+    if (parts.length === 3 && !parts.some(isNaN)) {
+      return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0)
+    }
+    return new Date()
   }
 
   const getTimeObject = (timeStr) => {
-    const [h, m] = timeStr.split(':')
-    const d = new Date()
-    d.setHours(parseInt(h) || 8)
-    d.setMinutes(parseInt(m) || 0)
-    return d
+    if (!timeStr) return new Date()
+    const parts = timeStr.split(':').map(n => parseInt(n, 10))
+    const now = new Date()
+    const h = isNaN(parts[0]) ? 8 : parts[0]
+    const m = isNaN(parts[1]) ? 0 : parts[1]
+    now.setHours(h, m, 0, 0)
+    return now
   }
 
-  // Android must use the imperative API — rendering <DateTimePicker> declaratively
-  // works for the first dialog shown but silently fails to reopen for subsequent ones.
   const openDatePicker = () => {
     if (Platform.OS === 'android') {
       DateTimePickerAndroid.open({
@@ -329,34 +376,33 @@ export default function BookingScreen({ navigation, route }) {
         maximumDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         onChange: (event, date) => {
           if (event.type === 'set' && date) {
-            setForm(f => ({ ...f, scheduledDate: date.toISOString().split('T')[0] }))
+            setForm(f => ({ ...f, scheduledDate: formatDateStr(date) }))
           }
         },
       })
-    } else {
+    } else if (Platform.OS === 'ios') {
       setDraftDate(getDateObject(form.scheduledDate))
       setShowDatePicker(true)
     }
   }
 
   const openTimePicker = (type) => {
+    const initialTime = getTimeObject(type === 'start' ? form.startTime : form.endTime)
     if (Platform.OS === 'android') {
       DateTimePickerAndroid.open({
-        value: getTimeObject(type === 'start' ? form.startTime : form.endTime),
+        value: initialTime,
         mode: 'time',
         display: 'default',
         is24Hour: true,
         onChange: (event, time) => {
           if (event.type === 'set' && time) {
-            const h = time.getHours()
-            const m = time.getMinutes()
-            const timeStr = `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`
+            const timeStr = formatTimeStr(time)
             setForm(f => type === 'start' ? { ...f, startTime: timeStr } : { ...f, endTime: timeStr })
           }
         },
       })
-    } else {
-      setDraftTime(getTimeObject(type === 'start' ? form.startTime : form.endTime))
+    } else if (Platform.OS === 'ios') {
+      setDraftTime(initialTime)
       setTimePickerType(type)
     }
   }
@@ -526,30 +572,100 @@ export default function BookingScreen({ navigation, route }) {
                 <View style={{ flex: 1 }}><Input label="Màu xe" value={form.vehicleInfo.vehicleColor} onChangeText={v => setForm({ ...form, vehicleInfo: { ...form.vehicleInfo, vehicleColor: v } })} placeholder="Trắng" icon="color-palette-outline" /></View>
               </View>
 
-              {/* Clickable Date Picker trigger */}
-              <TouchableOpacity onPress={openDatePicker} activeOpacity={0.9}>
-                <View pointerEvents="none">
-                  <Input label="Ngày đặt *" value={form.scheduledDate} placeholder="Chọn ngày đặt" icon="calendar-outline" editable={false} />
+              {Platform.OS === 'web' ? (
+                <View style={{ gap: 14 }}>
+                  <View>
+                    <Text style={{ fontSize: SIZES.fontXs, fontWeight: '700', color: dark ? COLORS.dark.textSecondary : COLORS.textSecondary, marginBottom: 6 }}>Ngày đặt *</Text>
+                    <input
+                      type="date"
+                      value={form.scheduledDate}
+                      min={formatDateStr(new Date())}
+                      onChange={e => e.target.value && setForm(f => ({ ...f, scheduledDate: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: '14px',
+                        border: `1.5px solid ${dark ? '#334155' : '#cbd5e1'}`,
+                        backgroundColor: dark ? '#1e293b' : '#ffffff',
+                        color: dark ? '#f8fafc' : '#0f172a',
+                        fontSize: '14px',
+                        outline: 'none',
+                        fontFamily: 'inherit',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: SIZES.fontXs, fontWeight: '700', color: dark ? COLORS.dark.textSecondary : COLORS.textSecondary, marginBottom: 6 }}>Giờ vào *</Text>
+                      <input
+                        type="time"
+                        value={form.startTime}
+                        onChange={e => e.target.value && setForm(f => ({ ...f, startTime: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: '14px',
+                          border: `1.5px solid ${dark ? '#334155' : '#cbd5e1'}`,
+                          backgroundColor: dark ? '#1e293b' : '#ffffff',
+                          color: dark ? '#f8fafc' : '#0f172a',
+                          fontSize: '14px',
+                          outline: 'none',
+                          fontFamily: 'inherit',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: SIZES.fontXs, fontWeight: '700', color: dark ? COLORS.dark.textSecondary : COLORS.textSecondary, marginBottom: 6 }}>Giờ ra *</Text>
+                      <input
+                        type="time"
+                        value={form.endTime}
+                        onChange={e => e.target.value && setForm(f => ({ ...f, endTime: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: '14px',
+                          border: `1.5px solid ${dark ? '#334155' : '#cbd5e1'}`,
+                          backgroundColor: dark ? '#1e293b' : '#ffffff',
+                          color: dark ? '#f8fafc' : '#0f172a',
+                          fontSize: '14px',
+                          outline: 'none',
+                          fontFamily: 'inherit',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </View>
+                  </View>
                 </View>
-              </TouchableOpacity>
+              ) : (
+                <>
+                  {/* Clickable Date Picker trigger */}
+                  <TouchableOpacity onPress={openDatePicker} activeOpacity={0.9}>
+                    <View pointerEvents="none">
+                      <Input label="Ngày đặt *" value={form.scheduledDate} placeholder="Chọn ngày đặt" icon="calendar-outline" editable={false} />
+                    </View>
+                  </TouchableOpacity>
 
-              {/* Clickable Time Picker triggers */}
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <TouchableOpacity onPress={() => openTimePicker('start')} activeOpacity={0.9}>
-                    <View pointerEvents="none">
-                      <Input label="Giờ vào *" value={form.startTime} placeholder="Chọn giờ vào" icon="time-outline" editable={false} />
+                  {/* Clickable Time Picker triggers */}
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <TouchableOpacity onPress={() => openTimePicker('start')} activeOpacity={0.9}>
+                        <View pointerEvents="none">
+                          <Input label="Giờ vào *" value={form.startTime} placeholder="Chọn giờ vào" icon="time-outline" editable={false} />
+                        </View>
+                      </TouchableOpacity>
                     </View>
-                  </TouchableOpacity>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <TouchableOpacity onPress={() => openTimePicker('end')} activeOpacity={0.9}>
-                    <View pointerEvents="none">
-                      <Input label="Giờ ra *" value={form.endTime} placeholder="Chọn giờ ra" icon="time-outline" editable={false} />
+                    <View style={{ flex: 1 }}>
+                      <TouchableOpacity onPress={() => openTimePicker('end')} activeOpacity={0.9}>
+                        <View pointerEvents="none">
+                          <Input label="Giờ ra *" value={form.endTime} placeholder="Chọn giờ ra" icon="time-outline" editable={false} />
+                        </View>
+                      </TouchableOpacity>
                     </View>
-                  </TouchableOpacity>
-                </View>
-              </View>
+                  </View>
+                </>
+              )}
 
 
 
