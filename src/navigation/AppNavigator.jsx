@@ -22,11 +22,14 @@ import ParkingLotDetailScreen from '../screens/home/ParkingLotDetailScreen'
 import BookingScreen from '../screens/booking/BookingScreen'
 import BookingSuccessScreen from '../screens/booking/BookingSuccessScreen'
 import SlotMapViewerScreen from '../screens/booking/SlotMapViewerScreen'
+import MonthlyPassScreen from '../screens/booking/MonthlyPassScreen'
+import MonthlyPassSuccessScreen from '../screens/booking/MonthlyPassSuccessScreen'
 
 // History
 import HistoryScreen from '../screens/history/HistoryScreen'
 import BookingDetailScreen from '../screens/history/BookingDetailScreen'
 import SessionDetailScreen from '../screens/history/SessionDetailScreen'
+import MonthlyPassDetailScreen from '../screens/history/MonthlyPassDetailScreen'
 
 // Payment
 import PaymentScreen from '../screens/payment/PaymentScreen'
@@ -77,6 +80,8 @@ function BookingStack() {
       <Stack.Screen name="Booking" component={BookingScreen} />
       <Stack.Screen name="BookingSuccess" component={BookingSuccessScreen} />
       <Stack.Screen name="SlotMapViewer" component={SlotMapViewerScreen} />
+      <Stack.Screen name="MonthlyPass" component={MonthlyPassScreen} />
+      <Stack.Screen name="MonthlyPassSuccess" component={MonthlyPassSuccessScreen} />
     </Stack.Navigator>
   )
 }
@@ -88,6 +93,7 @@ function HistoryStack() {
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
       <Stack.Screen name="SessionDetail" component={SessionDetailScreen} />
+      <Stack.Screen name="MonthlyPassDetail" component={MonthlyPassDetailScreen} />
     </Stack.Navigator>
   )
 }
