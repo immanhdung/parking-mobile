@@ -66,8 +66,29 @@ export default function HistoryScreen({ navigation }) {
     : Array.isArray(monthlyPasses?.docs) ? monthlyPasses.docs
     : Array.isArray(monthlyPasses) ? monthlyPasses : []
   const filteredMonthlyPasses = statusFilter ? monthlyPassData.filter(pass => pass.status === statusFilter) : monthlyPassData
+
+  const sessionList = Array.isArray(sessions?.data)
+    ? sessions.data
+    : Array.isArray(sessions?.data?.docs)
+    ? sessions.data.docs
+    : Array.isArray(sessions?.docs)
+    ? sessions.docs
+    : Array.isArray(sessions)
+    ? sessions
+    : []
+
+  const bookingList = Array.isArray(bookings?.data)
+    ? bookings.data
+    : Array.isArray(bookings?.data?.docs)
+    ? bookings.data.docs
+    : Array.isArray(bookings?.docs)
+    ? bookings.docs
+    : Array.isArray(bookings)
+    ? bookings
+    : []
+
   const isLoading = tab === 'bookings' ? bLoading : tab === 'sessions' ? sLoading : mLoading
-  const currentData = tab === 'bookings' ? bookings?.data : tab === 'sessions' ? sessions?.data : filteredMonthlyPasses
+  const currentData = tab === 'bookings' ? bookingList : tab === 'sessions' ? sessionList : filteredMonthlyPasses
   const pagination = tab === 'bookings' ? bookings?.meta?.pagination : tab === 'sessions' ? sessions?.meta?.pagination : null
 
   const STATUS_FILTERS = {

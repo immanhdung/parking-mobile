@@ -20,6 +20,11 @@ export default function HomeScreen({ navigation }) {
     queryKey: ['my-bookings-home'],
     queryFn: () => bookingAPI.myBookings({ page: 1, limit: 3 }).then(r => r.data.data),
   })
+  const { data: activeSessionsRes, refetch: refetchS } = useQuery({
+    queryKey: ['my-active-sessions'],
+    queryFn: () => sessionAPI.getAll({ status: 'active', limit: 5 }).then(r => r.data),
+    refetchInterval: 5000,
+  })
   const { data: lots, refetch: refetchL } = useQuery({
     queryKey: ['lots-home'],
     queryFn: () => parkingLotAPI.getAll({ status: 'active', limit: 5 }).then(r => r.data.data),
@@ -30,7 +35,12 @@ export default function HomeScreen({ navigation }) {
     refetchInterval: 30000,
   })
 
-  const onRefresh = async () => { setRefreshing(true); await Promise.all([refetchB(), refetchL()]); setRefreshing(false) }
+  const rawSessions = Array.isArray(activeSessionsRes)
+    ? activeSessionsRes
+    : activeSessionsRes?.data?.docs || activeSessionsRes?.data || activeSessionsRes?.docs || activeSessionsRes?.items || []
+  const activeSession = Array.isArray(rawSessions) ? rawSessions.find(s => !s.monthlyPass && s.status === 'active') || rawSessions[0] : null
+
+  const onRefresh = async () => { setRefreshing(true); await Promise.all([refetchB(), refetchS(), refetchL()]); setRefreshing(false) }
   const firstName = user?.fullName?.split(' ').pop() || 'bạn'
 
   const QUICK = [
@@ -77,6 +87,55 @@ export default function HomeScreen({ navigation }) {
       </LinearGradient>
 
       <View style={{ padding: SIZES.screenPadding, gap: 24 }}>
+        {/* Active Parking Session Widget */}
+        {activeSession && (
+          <Animated.View entering={FadeInDown.delay(250)}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate('HistoryStack', { screen: 'SessionDetail', params: { sessionId: activeSession._id, session: activeSession } })}
+            >
+              <LinearGradient
+                colors={['#1e293b', '#0f172a']}
+                style={{
+                  borderRadius: 20,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: '#38bdf8',
+                  ...SHADOWS.md,
+                }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e' }} />
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#38bdf8', letterSpacing: 1 }}>
+                      LƯỢT ĐỖ XE ĐANG HOẠT ĐỘNG
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8' }}>
+                    #{activeSession.sessionCode || String(activeSession._id).slice(-6).toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={{ fontSize: 20, fontWeight: '900', color: '#ffffff', letterSpacing: 1.5 }}>
+                      {activeSession.vehicleInfo?.licensePlate || activeSession.vehicleInfo?.plate || 'XE ĐANG ĐỖ'}
+                    </Text>
+                    <Text style={{ fontSize: SIZES.fontXs, color: '#94a3b8', marginTop: 2 }}>
+                      {activeSession.parkingLot?.name || 'Bãi đỗ xe'} · Slot: {activeSession.slot?.slotCode || '—'}
+                    </Text>
+                  </View>
+
+                  <View style={{ backgroundColor: COLORS.primary, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: SIZES.fontXs }}>Xem vé đỗ</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#ffffff" />
+                  </View>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
         {/* Quick actions */}
         <Animated.View entering={FadeInDown.delay(300)}>
           <SectionHeader title="Chức năng nhanh" />

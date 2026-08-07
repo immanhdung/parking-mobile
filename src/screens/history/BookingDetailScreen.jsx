@@ -30,7 +30,7 @@ export default function BookingDetailScreen({ route, navigation }) {
   if (isLoading) return (
     <View style={{ flex: 1, backgroundColor: dark ? COLORS.dark.bg : COLORS.bg }}>
       <ScreenHeader title="Chi tiết đặt chỗ" onBack={() => navigation.goBack()} />
-      <View style={{ padding: SIZES.screenPadding, gap: 12 }}>{[0,1,2].map(i => <Skeleton key={i} width="100%" height={80} radius={16} />)}</View>
+      <View style={{ padding: SIZES.screenPadding, gap: 12 }}>{[0, 1, 2].map(i => <Skeleton key={i} width="100%" height={80} radius={16} />)}</View>
     </View>
   )
 
@@ -51,7 +51,7 @@ export default function BookingDetailScreen({ route, navigation }) {
         </Animated.View>
 
         {/* QR */}
-        {['pending','approved'].includes(b?.status) && (
+        {['pending', 'approved'].includes(b?.status) && (
           <Animated.View entering={FadeInDown.delay(200)}>
             <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
               <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 20 }}>🎫 Mã QR Check-in</Text>
@@ -60,6 +60,26 @@ export default function BookingDetailScreen({ route, navigation }) {
               </View>
               <Text style={{ fontSize: 10, color: COLORS.textTertiary, marginTop: 8 }}>{b?._id || b?.id ? `ci_${b._id || b.id}` : 'BOOKING'}</Text>
               <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary, marginTop: 14, textAlign: 'center' }}>Xuất trình mã QR khi check-in tại bãi xe</Text>
+            </Card>
+          </Animated.View>
+        )}
+
+        {/* View Session Button if checked in */}
+        {(b?.parkingSession || ['completed', 'in_use', 'checked_in'].includes(b?.status)) && (
+          <Animated.View entering={FadeInDown.delay(250)}>
+            <Card style={{ backgroundColor: '#0f172a', borderColor: '#38bdf8', borderWidth: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: '#38bdf8', letterSpacing: 1 }}>LƯỢT ĐỖ XE (SESSION)</Text>
+                  <Text style={{ fontSize: SIZES.fontSm, color: '#ffffff', marginTop: 2, fontWeight: '700' }}>Xe đã được check-in vào bãi</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('SessionDetail', { sessionId: typeof b.parkingSession === 'object' ? b.parkingSession._id : (b.parkingSession || b._id) })}
+                  style={{ backgroundColor: COLORS.primary, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10 }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: SIZES.fontSm }}>Xem vé đỗ →</Text>
+                </TouchableOpacity>
+              </View>
             </Card>
           </Animated.View>
         )}
@@ -127,7 +147,7 @@ export default function BookingDetailScreen({ route, navigation }) {
         </Animated.View>
       </ScrollView>
 
-      {['pending','approved'].includes(b?.status) && (
+      {['pending', 'approved'].includes(b?.status) && (
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: SIZES.screenPadding, paddingBottom: Platform.OS === 'ios' ? 32 : 20, backgroundColor: dark ? COLORS.dark.bg : COLORS.white, borderTopWidth: 1, borderTopColor: dark ? COLORS.dark.border : COLORS.border }}>
           <Button title="Hủy đặt chỗ" variant="danger" onPress={() => cancelMut.mutate()} loading={cancelMut.isPending} size="lg" icon="close-circle-outline" />
         </View>

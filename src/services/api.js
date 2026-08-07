@@ -79,6 +79,7 @@ export const monthlyPassAPI = {
 export const sessionAPI = {
   getAll: (params) => api.get('/parking-sessions', { params }),
   getById: (id) => api.get(`/parking-sessions/${id}`),
+  getActive: () => api.get('/parking-sessions', { params: { status: 'active' } }),
 }
 export const paymentAPI = {
   getAll: (params) => api.get('/payments', { params }),
