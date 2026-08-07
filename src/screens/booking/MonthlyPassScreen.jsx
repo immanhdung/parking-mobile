@@ -95,7 +95,13 @@ export default function MonthlyPassScreen({ navigation }) {
           })
           queryClient.invalidateQueries({ queryKey: ['my-monthly-passes'] })
           Toast.show({ type: 'success', text1: 'Thanh toán thành công', text2: 'Vé tháng của bạn đã được kích hoạt.' })
-          navigation.navigate('HomeStack', { screen: 'Home' })
+          navigation.replace('MonthlyPassSuccess', {
+            monthlyPass: activatedPass,
+            vehicleInfo: form.vehicleInfo,
+            parkingLot: form.parkingLot,
+            vehicleType: form.vehicleType,
+            price: paymentInfo?.amount || monthlyRate,
+          })
         }
       } catch (error) {
         console.warn('Unable to check monthly pass payment status', error)
