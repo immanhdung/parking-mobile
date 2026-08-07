@@ -6,7 +6,7 @@ import Toast from 'react-native-toast-message'
 import { parkingLotAPI, paymentAPI, vehicleTypeAPI } from '../../services/api'
 import { Button, Card, Input, ScreenHeader, Skeleton } from '../../components/common'
 import { COLORS, SIZES } from '../../utils/theme'
-import { formatCurrency } from '../../utils/helpers'
+import { formatCurrency, getVehicleTypeName } from '../../utils/helpers'
 
 const formatDate = (date) => {
   const year = date.getFullYear()
@@ -23,15 +23,21 @@ const getEndDate = (startDate) => {
   return formatDate(endDate)
 }
 
-export default function MonthlyPassScreen({ navigation }) {
+export default function MonthlyPassScreen({ navigation, route }) {
   const scheme = useColorScheme()
   const dark = scheme === 'dark'
   const queryClient = useQueryClient()
+  const initialVehicle = route?.params?.vehicle || null
+
   const [form, setForm] = useState({
     parkingLot: null,
-    vehicleType: null,
+    vehicleType: initialVehicle?.vehicleType || null,
     startDate: formatDate(new Date()),
-    vehicleInfo: { licensePlate: '', vehicleModel: '', vehicleColor: '' },
+    vehicleInfo: { 
+      licensePlate: initialVehicle?.licensePlate || '', 
+      vehicleModel: initialVehicle?.vehicleModel || '', 
+      vehicleColor: initialVehicle?.vehicleColor || '' 
+    },
   })
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [monthlyPass, setMonthlyPass] = useState(null)
@@ -42,8 +48,9 @@ export default function MonthlyPassScreen({ navigation }) {
     queryFn: () => parkingLotAPI.getAll({ status: 'active', limit: 50 }).then(r => r.data.data),
   })
   const { data: vehicleTypes, isLoading: vehicleTypesLoading } = useQuery({
-    queryKey: ['vehicle-types-monthly-pass'],
-    queryFn: () => vehicleTypeAPI.getAll().then(r => r.data.data),
+    queryKey: ['vehicle-types-monthly-pass', form.parkingLot?._id],
+    queryFn: () => vehicleTypeAPI.getAll({ parkingLot: form.parkingLot._id }).then(r => (r.data.data || []).map(type => ({ ...type, name: getVehicleTypeName(type) }))),
+    enabled: !!form.parkingLot?._id,
   })
 
   const monthlyRate = form.vehicleType?.pricing?.monthlyRate || 0
@@ -136,7 +143,7 @@ export default function MonthlyPassScreen({ navigation }) {
           <Text style={{ fontSize: SIZES.fontLg, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 10 }}>1. Chọn bãi xe</Text>
           {lotsLoading ? <Skeleton width="100%" height={76} radius={16} /> : lots?.map(lot => {
             const selected = form.parkingLot?._id === lot._id
-            return <TouchableOpacity key={lot._id} onPress={() => setForm(current => ({ ...current, parkingLot: lot }))} activeOpacity={0.85} style={{ marginBottom: 10 }}>
+            return <TouchableOpacity key={lot._id} onPress={() => setForm(current => ({ ...current, parkingLot: lot, vehicleType: null }))} activeOpacity={0.85} style={{ marginBottom: 10 }}>
               <Card style={{ borderColor: selected ? COLORS.primary : (dark ? COLORS.dark.border : COLORS.border), borderWidth: selected ? 2 : 1, padding: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name="business-outline" size={21} color={selected ? COLORS.primary : COLORS.textTertiary} />
@@ -161,7 +168,7 @@ export default function MonthlyPassScreen({ navigation }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name={type.code === 'MOTORBIKE' ? 'bicycle-outline' : 'car-outline'} size={22} color={selected ? COLORS.primary : COLORS.textTertiary} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>{type.name}</Text>
+                    <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>{type.code}</Text>
                     <Text style={{ marginTop: 2, fontSize: SIZES.fontSm, color: rate > 0 ? COLORS.primary : COLORS.danger, fontWeight: '700' }}>{rate > 0 ? `${formatCurrency(rate)}/tháng` : 'Chưa cấu hình giá vé tháng'}</Text>
                   </View>
                   {selected && <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />}

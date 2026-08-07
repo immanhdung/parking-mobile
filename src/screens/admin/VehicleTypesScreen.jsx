@@ -6,8 +6,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Toast from 'react-native-toast-message'
 import { COLORS, SIZES } from '../../utils/theme'
 import { Card, Badge, Input, ScreenHeader, Button, Divider, Skeleton, EmptyState } from '../../components/common'
-import { vehicleTypeAPI } from '../../services/api'
-import { formatCurrency } from '../../utils/helpers'
+import { parkingLotAPI, vehicleTypeAPI } from '../../services/api'
+import { formatCurrency, getVehicleTypeName } from '../../utils/helpers'
 
 const SIZE_LABELS = { small: 'Nhỏ', medium: 'Vừa', large: 'Lớn', extra_large: 'Rất lớn' }
 const VEHICLE_EMOJI = { CAR: '🚖', MOTORBIKE: '🏍️', BICYCLE: '🚲', ELECTRIC_BIKE: '⚡' }
@@ -25,10 +25,17 @@ export default function VehicleTypesScreen({ navigation }) {
   const [editing, setEditing] = useState(null) // vehicle type object being edited, or null
   const [formVisible, setFormVisible] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [selectedParkingLot, setSelectedParkingLot] = useState(null)
+
+  const { data: parkingLots, isLoading: lotsLoading } = useQuery({
+    queryKey: ['admin-parking-lots-for-pricing'],
+    queryFn: () => parkingLotAPI.getAll({ status: 'active', limit: 100 }).then(r => r.data.data),
+  })
 
   const { data: types, isLoading, refetch } = useQuery({
-    queryKey: ['admin-vehicle-types'],
-    queryFn: () => vehicleTypeAPI.getAll({ includeInactive: true }).then(r => r.data.data),
+    queryKey: ['admin-vehicle-types', selectedParkingLot?._id],
+    queryFn: () => vehicleTypeAPI.getAll({ includeInactive: true, parkingLot: selectedParkingLot._id }).then(r => (r.data.data || []).map(type => ({ ...type, name: getVehicleTypeName(type) }))),
+    enabled: !!selectedParkingLot?._id,
   })
 
   const invalidateAll = () => {
@@ -93,7 +100,7 @@ export default function VehicleTypesScreen({ navigation }) {
     setForm(EMPTY_FORM)
   }
 
-  const canSave = form.name.trim() && form.code.trim() && form.dayBlockRate && form.dailyRate
+  const canSave = !!selectedParkingLot && form.name.trim() && form.code.trim() && form.dayBlockRate && form.dailyRate
 
   const handleSave = () => {
     const payload = {
@@ -101,6 +108,7 @@ export default function VehicleTypesScreen({ navigation }) {
       code: form.code.trim().toUpperCase(),
       size: form.size,
       isActive: form.isActive,
+      parkingLot: selectedParkingLot._id,
       pricing: {
         dayBlockRate: Number(form.dayBlockRate) || 0,
         nightBlockRate: form.nightBlockRate ? Number(form.nightBlockRate) : undefined,
@@ -130,7 +138,23 @@ export default function VehicleTypesScreen({ navigation }) {
         }
       />
 
-      {isLoading ? (
+      <View style={{ marginBottom: 12 }}>
+        <Text style={{ paddingHorizontal: SIZES.screenPadding, fontSize: SIZES.fontSm, fontWeight: '700', color: dark ? COLORS.dark.textSecondary : COLORS.textSecondary, marginBottom: 8 }}>Chọn tòa/bãi xe để cấu hình giá</Text>
+        {lotsLoading ? <View style={{ paddingHorizontal: SIZES.screenPadding }}><Skeleton width="55%" height={42} radius={14} /></View> : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: SIZES.screenPadding, gap: 8 }}>
+            {parkingLots?.map(lot => {
+              const selected = selectedParkingLot?._id === lot._id
+              return <TouchableOpacity key={lot._id} onPress={() => { setSelectedParkingLot(lot); closeForm() }} style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, backgroundColor: selected ? COLORS.primary : (dark ? COLORS.dark.bgSecondary : '#f1f5f9'), borderWidth: 1.5, borderColor: selected ? COLORS.primary : 'transparent' }}>
+                <Text style={{ color: selected ? '#fff' : (dark ? COLORS.dark.textSecondary : COLORS.textSecondary), fontWeight: '700', fontSize: SIZES.fontSm }}>{lot.name}</Text>
+              </TouchableOpacity>
+            })}
+          </ScrollView>
+        )}
+      </View>
+
+      {!selectedParkingLot ? (
+        <EmptyState icon="business-outline" title="Chọn tòa/bãi xe" subtitle="Chọn một tòa ở trên để xem và cấu hình giá từng loại xe." />
+      ) : isLoading ? (
         <View style={{ paddingHorizontal: SIZES.screenPadding, gap: 10 }}>
           {[1, 2, 3].map(i => <Skeleton key={i} width="100%" height={100} radius={16} />)}
         </View>
@@ -148,7 +172,7 @@ export default function VehicleTypesScreen({ navigation }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>{item.name}</Text>
+                      <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>{getVehicleTypeName(item)}</Text>
                       <Badge status={item.isActive === false ? 'blocked' : 'available'} label={item.isActive === false ? 'Tắt' : 'Đang dùng'} size="sm" />
                     </View>
                     <Text style={{ fontSize: SIZES.fontXs + 1, color: COLORS.textSecondary, marginTop: 2 }}>{item.code} · {SIZE_LABELS[item.size] || item.size}</Text>

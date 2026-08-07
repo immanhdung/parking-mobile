@@ -157,7 +157,7 @@ export default function SlotMapViewerScreen({ route, navigation }) {
               <View style={{ flexDirection: 'row', gap: 16 }}>
                 <View>
                   <Text style={{ fontSize: SIZES.fontXs, color: COLORS.textTertiary }}>Loại xe</Text>
-                  <Text style={{ fontSize: SIZES.fontSm, fontWeight: '600', color: dark ? COLORS.dark.text : COLORS.text }}>{selectedSlot.vehicleType?.name || '—'}</Text>
+                  <Text style={{ fontSize: SIZES.fontSm, fontWeight: '600', color: dark ? COLORS.dark.text : COLORS.text }}>{selectedSlot.vehicleType?.code || '-'}</Text>
                 </View>
                 <View>
                   <Text style={{ fontSize: SIZES.fontXs, color: COLORS.textTertiary }}>Khu vực</Text>
