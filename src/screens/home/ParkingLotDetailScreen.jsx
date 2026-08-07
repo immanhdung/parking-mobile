@@ -60,38 +60,7 @@ export default function ParkingLotDetailScreen({ route, navigation }) {
         </LinearGradient>
 
         <View style={{ padding: SIZES.screenPadding, gap: 14 }}>
-          {/* Slot summary */}
-          <Animated.View entering={FadeInDown.delay(150)} style={{ flexDirection: 'row', gap: 10 }}>
-            {[
-              { label: 'Tổng slot', value: summary?.total || 0, color: COLORS.primary, bg: COLORS.primaryBg },
-              { label: 'Trống', value: summary?.available || 0, color: COLORS.success, bg: COLORS.successBg },
-              { label: 'Đang đỗ', value: summary?.occupied || 0, color: COLORS.danger, bg: COLORS.dangerBg },
-              { label: 'Đã đặt', value: summary?.reserved || 0, color: '#1d4ed8', bg: '#eff6ff' },
-            ].map((item, i) => (
-              <Card key={i} style={{ flex: 1, alignItems: 'center', paddingVertical: 14, backgroundColor: item.bg }}>
-                <Text style={{ fontSize: 20, fontWeight: '900', color: item.color }}>{item.value}</Text>
-                <Text style={{ fontSize: 9, color: COLORS.textSecondary, marginTop: 2, textAlign: 'center' }}>{item.label}</Text>
-              </Card>
-            ))}
-          </Animated.View>
 
-          {/* Occupancy rate */}
-          <Animated.View entering={FadeInDown.delay(200)}>
-            <Card>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Text style={{ fontSize: SIZES.fontSm, fontWeight: '600', color: dark ? COLORS.dark.textSecondary : COLORS.textSecondary }}>Tỷ lệ lấp đầy</Text>
-                <Text style={{ fontSize: SIZES.fontSm, fontWeight: '800', color: occupancyRate > 80 ? COLORS.danger : occupancyRate > 50 ? COLORS.warning : COLORS.success }}>
-                  {occupancyRate}%
-                </Text>
-              </View>
-              <View style={{ height: 10, backgroundColor: dark ? COLORS.dark.border : '#f1f5f9', borderRadius: 5, overflow: 'hidden' }}>
-                <View style={{
-                  width: `${occupancyRate}%`, height: '100%', borderRadius: 5,
-                  backgroundColor: occupancyRate > 80 ? COLORS.danger : occupancyRate > 50 ? COLORS.warning : COLORS.success,
-                }} />
-              </View>
-            </Card>
-          </Animated.View>
 
           {/* Info */}
           <Animated.View entering={FadeInDown.delay(250)}>

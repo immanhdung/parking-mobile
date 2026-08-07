@@ -53,12 +53,25 @@ export default function BookingScreen({ navigation, route }) {
   const [selectedFloor, setSelectedFloor] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
 
+  // Fetch queries
+  const { data: lots, isLoading: lotsLoading } = useQuery({
+    queryKey: ['lots-booking'],
+    queryFn: () => parkingLotAPI.getAll({ status: 'active', limit: 20 }).then(r => r.data.data),
+  })
+
   // Screen focus listener to reset the booking form
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      setStep(0)
+      const preSelectedLotId = route?.params?.preSelectedLotId
+      let initialLot = null
+      
+      if (preSelectedLotId && lots) {
+        initialLot = lots.find(l => l._id === preSelectedLotId) || null
+      }
+
+      setStep(initialLot ? 1 : 0)
       setForm({
-        parkingLot: null, vehicleType: null,
+        parkingLot: initialLot, vehicleType: null,
         scheduledDate: new Date().toISOString().split('T')[0],
         startTime: '08:00', endTime: '17:00',
         vehicleInfo: { licensePlate: '', vehicleModel: '', vehicleColor: '' },
@@ -75,7 +88,7 @@ export default function BookingScreen({ navigation, route }) {
       setQrRetryKey(0)
     })
     return unsubscribe
-  }, [navigation])
+  }, [navigation, route?.params?.preSelectedLotId, lots])
 
   // Reset slot selection when parking lot or vehicle type changes
   useEffect(() => {
@@ -83,11 +96,7 @@ export default function BookingScreen({ navigation, route }) {
     setSelectedSlot(null)
   }, [form.parkingLot, form.vehicleType])
 
-  // Fetch queries
-  const { data: lots, isLoading: lotsLoading } = useQuery({
-    queryKey: ['lots-booking'],
-    queryFn: () => parkingLotAPI.getAll({ status: 'active', limit: 20 }).then(r => r.data.data),
-  })
+
 
   const { data: vehicleTypes } = useQuery({
     queryKey: ['vehicle-types', form.parkingLot?._id],
@@ -166,12 +175,14 @@ export default function BookingScreen({ navigation, route }) {
 
   const checkTimeOverlap = () => {
     if (!form.startTime || !form.endTime) return null
-    const formStartMins = toMinutes(form.startTime)
-    const formEndMins = toMinutes(form.endTime)
+    let formStartMins = toMinutes(form.startTime)
+    let formEndMins = toMinutes(form.endTime)
 
-    if (formStartMins >= formEndMins) {
-      return { invalidTime: true, message: `Giờ vào (${form.startTime}) không được bằng hoặc muộn hơn giờ ra (${form.endTime}). Vui lòng điều chỉnh lại khung giờ!` }
+    // Handle cross-midnight booking
+    if (formEndMins <= formStartMins) {
+      formEndMins += 24 * 60
     }
+
     if (!selectedSlot || !existingBookings || !Array.isArray(existingBookings) || existingBookings.length === 0) return null
 
     const targetSlotId = String(selectedSlot._id)
@@ -186,11 +197,23 @@ export default function BookingScreen({ navigation, route }) {
       if (!isSameSlot) return false
 
       const bDate = b.scheduledDate ? new Date(b.scheduledDate).toISOString().split('T')[0] : null
-      if (bDate && bDate !== form.scheduledDate) return false
+      
+      // If dates don't match, we still need to be careful if one booking is overnight.
+      // But for simplicity on the frontend, let's just do a basic overlap check if dates match
+      // or if we're dealing with an overnight overlap. A full robust check is done by the backend anyway.
+      
+      let bStartMins = toMinutes(b.startTime) - BUFFER_MINUTES
+      let bEndMins = toMinutes(b.endTime) + BUFFER_MINUTES
+      if (toMinutes(b.endTime) <= toMinutes(b.startTime)) {
+        bEndMins += 24 * 60
+      }
 
-      // Backend applies 15 min buffer to prevent overlap during car exit/entry
-      const bStartMins = toMinutes(b.startTime) - BUFFER_MINUTES
-      const bEndMins = toMinutes(b.endTime) + BUFFER_MINUTES
+      // If they are on different dates, they could still overlap if one crosses midnight.
+      // E.g., b is on 2026-08-07, overnight to 08-08. We are booking 08-08 morning.
+      // To properly check, we'd need absolute times. Since this is just a quick frontend guard,
+      // we only check if the dates are the same OR if they overlap across dates.
+      // To simplify, if dates don't match, we assume no overlap (backend will catch it).
+      if (bDate && bDate !== form.scheduledDate) return false
 
       return formStartMins < bEndMins && formEndMins > bStartMins
     })
@@ -319,10 +342,6 @@ export default function BookingScreen({ navigation, route }) {
       return
     }
 
-    if (form.startTime >= form.endTime) {
-      Toast.show({ type: 'error', text1: 'Thời gian không hợp lệ', text2: 'Giờ ra phải sau giờ vào!' })
-      return
-    }
 
     const overlap = checkTimeOverlap()
     if (overlap?.invalidTime) {
