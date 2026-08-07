@@ -12,7 +12,8 @@ export default function BookingSuccessScreen({ route, navigation }) {
   const booking = route?.params?.booking
   const scheme = useColorScheme()
   const dark = scheme === 'dark'
-  const qrData = booking?.qrCodeData || booking?.bookingCode || 'BOOKING'
+  const qrId = booking?._id || booking?.id
+  const qrData = qrId ? `ci_${qrId}` : 'BOOKING'
 
   return (
     <View style={{ flex: 1, backgroundColor: dark ? COLORS.dark.bg : COLORS.bg }}>
@@ -39,8 +40,9 @@ export default function BookingSuccessScreen({ route, navigation }) {
           <Card style={{ alignItems: 'center', padding: 24, marginBottom: 16 }}>
             <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 20 }}>🎫 Mã QR Check-in</Text>
             <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 16, ...SHADOWS.md }}>
-              <QRCode value={qrData} size={180} backgroundColor="#fff" color="#1e293b" />
+              <QRCode value={qrData} size={180} backgroundColor="#ffffff" color="#000000" />
             </View>
+            <Text style={{ fontSize: 10, color: COLORS.textTertiary, marginTop: 8 }}>{qrData}</Text>
             <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary, marginTop: 16, textAlign: 'center' }}>Xuất trình mã QR khi check-in tại bãi xe</Text>
           </Card>
         </Animated.View>

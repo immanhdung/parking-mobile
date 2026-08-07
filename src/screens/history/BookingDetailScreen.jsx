@@ -56,8 +56,9 @@ export default function BookingDetailScreen({ route, navigation }) {
             <Card style={{ alignItems: 'center', paddingVertical: 24 }}>
               <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 20 }}>🎫 Mã QR Check-in</Text>
               <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 16, ...SHADOWS.md }}>
-                <QRCode value={b?.qrCodeData || b?.bookingCode || 'BOOKING'} size={160} backgroundColor="#fff" color="#1e293b" />
+                <QRCode value={b?._id || b?.id ? `ci_${b._id || b.id}` : 'BOOKING'} size={160} backgroundColor="#ffffff" color="#000000" />
               </View>
+              <Text style={{ fontSize: 10, color: COLORS.textTertiary, marginTop: 8 }}>{b?._id || b?.id ? `ci_${b._id || b.id}` : 'BOOKING'}</Text>
               <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary, marginTop: 14, textAlign: 'center' }}>Xuất trình mã QR khi check-in tại bãi xe</Text>
             </Card>
           </Animated.View>
