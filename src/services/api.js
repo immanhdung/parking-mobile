@@ -59,6 +59,13 @@ export const vehicleTypeAPI = {
   update: (id, d) => api.put(`/vehicle-types/${id}`, d),
   delete: (id) => api.delete(`/vehicle-types/${id}`),
 }
+export const vehicleAPI = {
+  getMyVehicles: () => api.get('/vehicles'),
+  addVehicle: (d) => api.post('/vehicles', d),
+  updateVehicle: (id, d) => api.put(`/vehicles/${id}`, d),
+  deleteVehicle: (id) => api.delete(`/vehicles/${id}`),
+  setDefault: (id) => api.patch(`/vehicles/${id}/default`),
+}
 export const slotAPI = {
   findAvailable: (params) => api.get('/parking-slots/available', { params }),
   getFloorMap: (floorId, params) => api.get(`/parking-slots/floor-map/${floorId}`, { params }),

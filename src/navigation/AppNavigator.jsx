@@ -41,6 +41,7 @@ import NotificationsScreen from '../screens/notifications/NotificationsScreen'
 // Profile
 import ProfileScreen from '../screens/profile/ProfileScreen'
 import FeedbackScreen from '../screens/profile/FeedbackScreen'
+import MyVehiclesScreen from '../screens/profile/MyVehiclesScreen'
 
 // Admin screens
 import AdminHomeScreen from '../screens/admin/AdminHomeScreen'
@@ -114,6 +115,7 @@ function ProfileStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
+      <Stack.Screen name="MyVehicles" component={MyVehiclesScreen} />
     </Stack.Navigator>
   )
 }

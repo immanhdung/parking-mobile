@@ -23,15 +23,21 @@ const getEndDate = (startDate) => {
   return formatDate(endDate)
 }
 
-export default function MonthlyPassScreen({ navigation }) {
+export default function MonthlyPassScreen({ navigation, route }) {
   const scheme = useColorScheme()
   const dark = scheme === 'dark'
   const queryClient = useQueryClient()
+  const initialVehicle = route?.params?.vehicle || null
+
   const [form, setForm] = useState({
     parkingLot: null,
-    vehicleType: null,
+    vehicleType: initialVehicle?.vehicleType || null,
     startDate: formatDate(new Date()),
-    vehicleInfo: { licensePlate: '', vehicleModel: '', vehicleColor: '' },
+    vehicleInfo: { 
+      licensePlate: initialVehicle?.licensePlate || '', 
+      vehicleModel: initialVehicle?.vehicleModel || '', 
+      vehicleColor: initialVehicle?.vehicleColor || '' 
+    },
   })
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [monthlyPass, setMonthlyPass] = useState(null)
