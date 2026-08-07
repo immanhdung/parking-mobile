@@ -157,7 +157,7 @@ export default function ReportsScreen({ navigation }) {
     const grouped = {}
     list.forEach(item => {
       const code = item.vehicleType?.code || 'OTHER'
-      const name = item.vehicleType?.name || 'Khác'
+      const name = item.vehicleType?.code || 'Khác'
       const status = item._id?.status || 'available'
       const count = item.count || 0
 

@@ -43,7 +43,7 @@ export default function MonthlyPassSuccessScreen({ navigation, route }) {
         <Card>
           <Text style={{ fontSize: SIZES.fontLg, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 6 }}>Thông tin vé tháng</Text>
           <InfoRow label="Bãi xe" value={lot?.name} icon="business-outline" />
-          <InfoRow label="Loại xe" value={type?.name} icon="car-outline" />
+          <InfoRow label="Loại xe" value={type?.code} icon="car-outline" />
           <InfoRow label="Hiệu lực từ" value={formatDate(monthlyPass?.startDate)} icon="calendar-outline" />
           <InfoRow label="Hiệu lực đến" value={formatDate(monthlyPass?.endDate)} icon="calendar-clear-outline" />
           <InfoRow label="Phí vé tháng" value={formatCurrency(monthlyPass?.price || price)} icon="wallet-outline" valueColor={COLORS.success} />

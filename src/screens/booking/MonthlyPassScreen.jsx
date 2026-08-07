@@ -168,7 +168,7 @@ export default function MonthlyPassScreen({ navigation, route }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name={type.code === 'MOTORBIKE' ? 'bicycle-outline' : 'car-outline'} size={22} color={selected ? COLORS.primary : COLORS.textTertiary} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>{type.name}</Text>
+                    <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text }}>{type.code}</Text>
                     <Text style={{ marginTop: 2, fontSize: SIZES.fontSm, color: rate > 0 ? COLORS.primary : COLORS.danger, fontWeight: '700' }}>{rate > 0 ? `${formatCurrency(rate)}/tháng` : 'Chưa cấu hình giá vé tháng'}</Text>
                   </View>
                   {selected && <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />}

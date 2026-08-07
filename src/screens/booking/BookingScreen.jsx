@@ -759,7 +759,7 @@ export default function BookingScreen({ navigation, route }) {
                 {[
                   { label: 'Bãi xe', value: form.parkingLot?.name, icon: 'business-outline' },
                   { label: 'Vị trí đỗ', value: `Slot ${selectedSlot?.slotCode} (${selectedSlot?.floor?.name || 'Tầng'})`, icon: 'grid-outline' },
-                  { label: 'Loại xe', value: form.vehicleType?.name, icon: 'car-outline' },
+                  { label: 'Loại xe', value: form.vehicleType?.code, icon: 'car-outline' },
                   { label: 'Ngày', value: form.scheduledDate, icon: 'calendar-outline' },
                   { label: 'Giờ', value: `${form.startTime} → ${form.endTime}`, icon: 'time-outline' },
                   { label: 'Biển số', value: form.vehicleInfo.licensePlate, icon: 'id-card-outline' },

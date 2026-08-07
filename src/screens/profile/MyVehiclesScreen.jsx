@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Toast from 'react-native-toast-message'
-import { vehicleAPI, vehicleTypeAPI } from '../../services/api'
+import { vehicleAPI, vehicleTypeAPI, monthlyPassAPI } from '../../services/api'
 import { Button, Card, Input } from '../../components/common'
 import { COLORS, SIZES, SHADOWS } from '../../utils/theme'
 import { getVehicleName } from '../../utils/helpers'
@@ -27,6 +27,13 @@ export default function MyVehiclesScreen({ navigation }) {
     queryKey: ['vehicle-types-global'],
     queryFn: () => vehicleTypeAPI.getAll().then(r => r.data.data),
   })
+
+  const { data: monthlyPassesData } = useQuery({
+    queryKey: ['my-active-monthly-passes'],
+    queryFn: () => monthlyPassAPI.getMy({ status: 'active', limit: 100 }).then(r => r.data.data),
+  })
+  
+  const activePasses = monthlyPassesData?.docs || monthlyPassesData || []
 
   // Extract unique vehicle types by code
   const uniqueVehicleTypes = React.useMemo(() => {
@@ -95,7 +102,9 @@ export default function MyVehiclesScreen({ navigation }) {
             <Button title="Thêm phương tiện mới" onPress={() => setAddMode(true)} style={{ marginTop: 20 }} />
           </Animated.View>
         ) : (
-          vehicles?.map((v, i) => (
+          vehicles?.map((v, i) => {
+            const vehiclePass = activePasses.find(p => p.licensePlate === v.licensePlate)
+            return (
             <Animated.View key={v._id} entering={FadeInDown.delay(i * 100)}>
               <Card style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', padding: 16 }}>
                 <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: dark ? COLORS.dark.bgSecondary : COLORS.primaryBg, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
@@ -104,9 +113,14 @@ export default function MyVehiclesScreen({ navigation }) {
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: SIZES.fontLg, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 4 }}>{v.licensePlate}</Text>
                   <Text style={{ fontSize: SIZES.fontSm, color: COLORS.textSecondary }}>{v.vehicleType?.code || '—'} · {v.vehicleModel || 'Không rõ dòng xe'} · {v.vehicleColor || 'Không rõ màu'}</Text>
+                  {vehiclePass && (
+                    <Text style={{ fontSize: SIZES.fontXs, color: COLORS.success, fontWeight: '700', marginTop: 4 }}>
+                      ✓ Đã có vé tháng ({vehiclePass.parkingLot?.name})
+                    </Text>
+                  )}
                   <TouchableOpacity onPress={() => navigation.navigate('BookingStack', { screen: 'MonthlyPass', params: { vehicle: v } })} style={{ marginTop: 10, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: `${COLORS.primary}15`, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="card-outline" size={14} color={COLORS.primary} />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>Mua vé tháng</Text>
+                    <Ionicons name={vehiclePass ? "sync-outline" : "card-outline"} size={14} color={COLORS.primary} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: COLORS.primary }}>{vehiclePass ? 'Gia hạn vé tháng' : 'Mua vé tháng'}</Text>
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity onPress={() => delMut.mutate(v._id)} style={{ padding: 8 }}>
@@ -114,7 +128,7 @@ export default function MyVehiclesScreen({ navigation }) {
                 </TouchableOpacity>
               </Card>
             </Animated.View>
-          ))
+          )})
         )}
       </ScrollView>
 

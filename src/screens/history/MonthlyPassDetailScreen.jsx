@@ -68,7 +68,7 @@ export default function MonthlyPassDetailScreen({ navigation, route }) {
         <Card>
           <Text style={{ fontSize: SIZES.fontLg, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 6 }}>Thông tin vé tháng</Text>
           <InfoRow label="Bãi xe" value={pass?.parkingLot?.name} icon="business-outline" />
-          <InfoRow label="Loại xe" value={pass?.vehicleType?.name} icon="car-outline" />
+          <InfoRow label="Loại xe" value={pass?.vehicleType?.code} icon="car-outline" />
           <InfoRow label="Hiệu lực từ" value={formatDate(pass?.startDate)} icon="calendar-outline" />
           <InfoRow label="Hiệu lực đến" value={formatDate(pass?.endDate)} icon="calendar-clear-outline" />
         </Card>

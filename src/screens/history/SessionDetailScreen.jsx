@@ -54,7 +54,7 @@ export default function SessionDetailScreen({ route, navigation }) {
             <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 12 }}>🚗 Thông tin xe</Text>
             <InfoRow label="Biển số" value={s?.vehicleInfo?.licensePlate} icon="id-card-outline" />
             <Divider />
-            <InfoRow label="Loại xe" value={s?.vehicleType?.name} icon="car-outline" />
+            <InfoRow label="Loại xe" value={s?.vehicleType?.code} icon="car-outline" />
             <Divider />
             <InfoRow label="Hãng xe" value={s?.vehicleInfo?.vehicleModel || '—'} icon="car-sport-outline" />
             <Divider />

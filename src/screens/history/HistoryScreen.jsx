@@ -91,7 +91,7 @@ export default function HistoryScreen({ navigation }) {
           <View style={{ gap: 5 }}>
             {[
               { icon: 'calendar-outline', text: `${formatDate(item.scheduledDate)} · ${item.startTime} → ${item.endTime}` },
-              { icon: 'car-outline', text: `${item.vehicleInfo?.licensePlate || '—'} · ${item.vehicleType?.name || ''}` },
+              { icon: 'car-outline', text: `${item.vehicleInfo?.licensePlate || '—'} · ${item.vehicleType?.code || ''}` },
               { icon: 'grid-outline', text: `Slot: ${slotCode ? `Slot ${slotCode}` : 'Gán khi check-in'}` },
               { icon: 'cash-outline', text: `Phí ước tính: ${formatCurrency(item.estimatedFee)}`, color: COLORS.primary },
             ].map((row, i) => (
@@ -131,7 +131,7 @@ export default function HistoryScreen({ navigation }) {
         </View>
         <View style={{ gap: 5 }}>
           {[
-            { icon: 'car-sport-outline', text: `${item.vehicleInfo?.licensePlate} · ${item.vehicleType?.name}` },
+            { icon: 'car-sport-outline', text: `${item.vehicleInfo?.licensePlate} · ${item.vehicleType?.code}` },
             { icon: 'log-in-outline', text: `Vào: ${formatDateTime(item.entryTime)}` },
             { icon: 'log-out-outline', text: item.exitTime ? `Ra: ${formatDateTime(item.exitTime)}` : '🔴 Đang gửi xe' },
             { icon: 'cash-outline', text: `Phí: ${formatCurrency(item.totalFee)}`, color: item.totalFee > 0 ? COLORS.primary : COLORS.textSecondary },
@@ -161,7 +161,7 @@ export default function HistoryScreen({ navigation }) {
         </View>
         <View style={{ gap: 5 }}>
           {[
-            { icon: 'car-outline', text: `${item.licensePlate || '—'} · ${item.vehicleType?.name || ''}` },
+            { icon: 'car-outline', text: `${item.licensePlate || '—'} · ${item.vehicleType?.code || ''}` },
             { icon: 'calendar-outline', text: `Hiệu lực: ${formatDate(item.startDate)} → ${formatDate(item.endDate)}` },
             { icon: 'cash-outline', text: `Giá vé: ${formatCurrency(item.price)}`, color: COLORS.success },
           ].map((row, i) => <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
