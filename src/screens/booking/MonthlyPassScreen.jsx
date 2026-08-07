@@ -6,7 +6,7 @@ import Toast from 'react-native-toast-message'
 import { parkingLotAPI, paymentAPI, vehicleTypeAPI } from '../../services/api'
 import { Button, Card, Input, ScreenHeader, Skeleton } from '../../components/common'
 import { COLORS, SIZES } from '../../utils/theme'
-import { formatCurrency } from '../../utils/helpers'
+import { formatCurrency, getVehicleTypeName } from '../../utils/helpers'
 
 const formatDate = (date) => {
   const year = date.getFullYear()
@@ -42,8 +42,9 @@ export default function MonthlyPassScreen({ navigation }) {
     queryFn: () => parkingLotAPI.getAll({ status: 'active', limit: 50 }).then(r => r.data.data),
   })
   const { data: vehicleTypes, isLoading: vehicleTypesLoading } = useQuery({
-    queryKey: ['vehicle-types-monthly-pass'],
-    queryFn: () => vehicleTypeAPI.getAll().then(r => r.data.data),
+    queryKey: ['vehicle-types-monthly-pass', form.parkingLot?._id],
+    queryFn: () => vehicleTypeAPI.getAll({ parkingLot: form.parkingLot._id }).then(r => (r.data.data || []).map(type => ({ ...type, name: getVehicleTypeName(type) }))),
+    enabled: !!form.parkingLot?._id,
   })
 
   const monthlyRate = form.vehicleType?.pricing?.monthlyRate || 0
@@ -136,7 +137,7 @@ export default function MonthlyPassScreen({ navigation }) {
           <Text style={{ fontSize: SIZES.fontLg, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 10 }}>1. Chọn bãi xe</Text>
           {lotsLoading ? <Skeleton width="100%" height={76} radius={16} /> : lots?.map(lot => {
             const selected = form.parkingLot?._id === lot._id
-            return <TouchableOpacity key={lot._id} onPress={() => setForm(current => ({ ...current, parkingLot: lot }))} activeOpacity={0.85} style={{ marginBottom: 10 }}>
+            return <TouchableOpacity key={lot._id} onPress={() => setForm(current => ({ ...current, parkingLot: lot, vehicleType: null }))} activeOpacity={0.85} style={{ marginBottom: 10 }}>
               <Card style={{ borderColor: selected ? COLORS.primary : (dark ? COLORS.dark.border : COLORS.border), borderWidth: selected ? 2 : 1, padding: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name="business-outline" size={21} color={selected ? COLORS.primary : COLORS.textTertiary} />

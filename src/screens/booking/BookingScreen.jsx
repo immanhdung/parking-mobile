@@ -8,7 +8,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { parkingLotAPI, vehicleTypeAPI, slotAPI, bookingAPI, floorAPI, paymentAPI } from '../../services/api'
 import { Button, Card, Input, ScreenHeader, Skeleton, Divider, Badge } from '../../components/common'
 import { COLORS, SIZES, SHADOWS } from '../../utils/theme'
-import { formatCurrency, calcEstimatedFee } from '../../utils/helpers'
+import { formatCurrency, calcEstimatedFee, getVehicleTypeName } from '../../utils/helpers'
 
 const STEPS = ['Chọn bãi & vị trí', 'Thông tin xe', 'Xác nhận']
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
@@ -90,8 +90,9 @@ export default function BookingScreen({ navigation, route }) {
   })
 
   const { data: vehicleTypes } = useQuery({
-    queryKey: ['vehicle-types'],
-    queryFn: () => vehicleTypeAPI.getAll().then(r => r.data.data),
+    queryKey: ['vehicle-types', form.parkingLot?._id],
+    queryFn: () => vehicleTypeAPI.getAll({ parkingLot: form.parkingLot._id }).then(r => (r.data.data || []).map(type => ({ ...type, name: getVehicleTypeName(type) }))),
+    enabled: !!form.parkingLot?._id,
   })
 
   const { data: floors } = useQuery({
@@ -465,7 +466,7 @@ export default function BookingScreen({ navigation, route }) {
                   lots?.map(lot => {
                     const isSelected = form.parkingLot?._id === lot._id
                     return (
-                      <TouchableOpacity key={lot._id} onPress={() => setForm({ ...form, parkingLot: lot })} activeOpacity={0.85}>
+                      <TouchableOpacity key={lot._id} onPress={() => setForm(current => ({ ...current, parkingLot: lot, vehicleType: null }))} activeOpacity={0.85}>
                         <Card style={{
                           marginBottom: 10,
                           borderWidth: 2,

@@ -20,6 +20,18 @@ export const formatCurrency = (amount) => {
   if (amount == null || isNaN(amount)) return '—'
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
 }
+
+export const getVehicleTypeName = (vehicleType) => {
+  if (!vehicleType) return 'Loại xe'
+  if (vehicleType.name) return vehicleType.name
+  const names = {
+    CAR: 'Xe ô tô',
+    MOTORBIKE: 'Xe máy',
+    BICYCLE: 'Xe đạp',
+    ELECTRIC_BIKE: 'Xe đạp điện',
+  }
+  return names[vehicleType.code] || vehicleType.description || 'Loại xe'
+}
 export const formatDuration = (hours) => {
   if (!hours || isNaN(hours)) return '0 phút'
   const h = Math.floor(hours)
