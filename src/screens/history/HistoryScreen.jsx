@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Toast from 'react-native-toast-message'
-import { bookingAPI, sessionAPI } from '../../services/api'
+import { bookingAPI, monthlyPassAPI, sessionAPI } from '../../services/api'
 import { Card, Badge, ScreenHeader, Skeleton, EmptyState, Button } from '../../components/common'
 import { COLORS, SIZES } from '../../utils/theme'
 import { formatDate, formatDateTime, formatCurrency, formatDuration } from '../../utils/helpers'
@@ -12,6 +12,7 @@ import { formatDate, formatDateTime, formatCurrency, formatDuration } from '../.
 const TABS = [
   { key: 'bookings', label: 'Đặt chỗ', icon: 'calendar-outline' },
   { key: 'sessions', label: 'Lượt gửi xe', icon: 'car-outline' },
+  { key: 'monthlyPasses', label: 'Vé tháng', icon: 'card-outline' },
 ]
 
 export default function HistoryScreen({ navigation }) {
@@ -34,22 +35,45 @@ export default function HistoryScreen({ navigation }) {
     keepPreviousData: true,
     enabled: tab === 'sessions',
   })
+  const { data: monthlyPasses, isLoading: mLoading, refetch: refetchM } = useQuery({
+    queryKey: ['my-monthly-passes'],
+    queryFn: () => monthlyPassAPI.getMy().then(r => r.data),
+    enabled: tab === 'monthlyPasses',
+  })
 
   const cancelMut = useMutation({
     mutationFn: (id) => bookingAPI.cancel(id, { reason: 'Người dùng hủy' }),
     onSuccess: () => { qc.invalidateQueries(['my-bookings']); Toast.show({ type: 'success', text1: 'Đã hủy booking' }) },
     onError: err => Toast.show({ type: 'error', text1: err.response?.data?.message }),
   })
+  const cancelMonthlyPassMut = useMutation({
+    mutationFn: id => monthlyPassAPI.cancel(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['my-monthly-passes'] }); Toast.show({ type: 'success', text1: 'Đã hủy vé tháng' }) },
+    onError: error => Toast.show({ type: 'error', text1: 'Không thể hủy vé tháng', text2: error.response?.data?.message || 'Vui lòng thử lại.' }),
+  })
 
-  const onRefresh = async () => { setRefreshing(true); tab === 'bookings' ? await refetchB() : await refetchS(); setRefreshing(false) }
+  const onRefresh = async () => {
+    setRefreshing(true)
+    if (tab === 'bookings') await refetchB()
+    else if (tab === 'sessions') await refetchS()
+    else await refetchM()
+    setRefreshing(false)
+  }
 
-  const isLoading = tab === 'bookings' ? bLoading : sLoading
-  const currentData = tab === 'bookings' ? bookings?.data : sessions?.data
-  const pagination = tab === 'bookings' ? bookings?.meta?.pagination : sessions?.meta?.pagination
+  const monthlyPassData = Array.isArray(monthlyPasses?.data) ? monthlyPasses.data
+    : Array.isArray(monthlyPasses?.data?.docs) ? monthlyPasses.data.docs
+    : Array.isArray(monthlyPasses?.data?.data) ? monthlyPasses.data.data
+    : Array.isArray(monthlyPasses?.docs) ? monthlyPasses.docs
+    : Array.isArray(monthlyPasses) ? monthlyPasses : []
+  const filteredMonthlyPasses = statusFilter ? monthlyPassData.filter(pass => pass.status === statusFilter) : monthlyPassData
+  const isLoading = tab === 'bookings' ? bLoading : tab === 'sessions' ? sLoading : mLoading
+  const currentData = tab === 'bookings' ? bookings?.data : tab === 'sessions' ? sessions?.data : filteredMonthlyPasses
+  const pagination = tab === 'bookings' ? bookings?.meta?.pagination : tab === 'sessions' ? sessions?.meta?.pagination : null
 
   const STATUS_FILTERS = {
     bookings: [{ key: '', label: 'Tất cả' }, { key: 'pending', label: 'Chờ duyệt' }, { key: 'approved', label: 'Đã duyệt' }, { key: 'completed', label: 'Hoàn thành' }, { key: 'cancelled', label: 'Đã hủy' }],
     sessions: [{ key: '', label: 'Tất cả' }, { key: 'active', label: 'Đang gửi' }, { key: 'completed', label: 'Hoàn thành' }],
+    monthlyPasses: [{ key: '', label: 'Tất cả' }, { key: 'pending', label: 'Chờ thanh toán' }, { key: 'active', label: 'Đang hiệu lực' }, { key: 'expired', label: 'Hết hạn' }, { key: 'cancelled', label: 'Đã hủy' }],
   }
 
   const BookingItem = ({ item, index }) => {
@@ -122,9 +146,44 @@ export default function HistoryScreen({ navigation }) {
     </Animated.View>
   )
 
+  const MonthlyPassItem = ({ item, index }) => (
+    <Animated.View entering={FadeInDown.delay(index * 50)}>
+      <Card style={{ marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '700', fontFamily: 'monospace' }}>{item.passCode || 'VÉ THÁNG'}</Text>
+            <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginTop: 2 }}>{item.parkingLot?.name || '—'}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <Badge status={item.status} label={item.status === 'active' ? 'Đang hiệu lực' : undefined} />
+            <Badge status={item.paymentStatus} size="sm" />
+          </View>
+        </View>
+        <View style={{ gap: 5 }}>
+          {[
+            { icon: 'car-outline', text: `${item.licensePlate || '—'} · ${item.vehicleType?.name || ''}` },
+            { icon: 'calendar-outline', text: `Hiệu lực: ${formatDate(item.startDate)} → ${formatDate(item.endDate)}` },
+            { icon: 'cash-outline', text: `Giá vé: ${formatCurrency(item.price)}`, color: COLORS.success },
+          ].map((row, i) => <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name={row.icon} size={13} color={COLORS.textTertiary} />
+            <Text style={{ fontSize: SIZES.fontSm, color: row.color || COLORS.textSecondary, fontWeight: row.color ? '700' : '400' }}>{row.text}</Text>
+          </View>)}
+        </View>
+        {['pending', 'active'].includes(item.status) && <View style={{ marginTop: 12, flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('MonthlyPassDetail', { monthlyPass: item })} style={{ flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: 'center' }}>
+            <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: SIZES.fontSm }}>Xem QR</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => cancelMonthlyPassMut.mutate(item._id || item.id)} style={{ flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.danger, alignItems: 'center' }}>
+            <Text style={{ color: COLORS.danger, fontWeight: '600', fontSize: SIZES.fontSm }}>Hủy</Text>
+          </TouchableOpacity>
+        </View>}
+      </Card>
+    </Animated.View>
+  )
+
   return (
     <View style={{ flex: 1, backgroundColor: dark ? COLORS.dark.bg : COLORS.bg }}>
-      <ScreenHeader title="Lịch sử" subtitle="Booking & lượt gửi xe" />
+      <ScreenHeader title="Lịch sử" subtitle="Booking, lượt gửi xe & vé tháng" />
 
       {/* Tabs */}
       <View style={{ flexDirection: 'row', paddingHorizontal: SIZES.screenPadding, gap: 8, marginBottom: 10 }}>
@@ -150,13 +209,13 @@ export default function HistoryScreen({ navigation }) {
       <FlatList
         data={currentData}
         keyExtractor={item => item._id}
-        renderItem={({ item, index }) => tab === 'bookings' ? <BookingItem item={item} index={index} /> : <SessionItem item={item} index={index} />}
+        renderItem={({ item, index }) => tab === 'bookings' ? <BookingItem item={item} index={index} /> : tab === 'sessions' ? <SessionItem item={item} index={index} /> : <MonthlyPassItem item={item} index={index} />}
         contentContainerStyle={{ paddingHorizontal: SIZES.screenPadding, paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
         ListEmptyComponent={
           isLoading
             ? <View style={{ gap: 10 }}>{[0,1,2].map(i => <Skeleton key={i} width="100%" height={120} radius={16} />)}</View>
-            : <EmptyState icon="file-tray-outline" title="Chưa có dữ liệu" subtitle={tab === 'bookings' ? 'Bạn chưa có lượt đặt chỗ nào' : 'Bạn chưa có lượt gửi xe nào'} />
+            : <EmptyState icon="file-tray-outline" title="Chưa có dữ liệu" subtitle={tab === 'bookings' ? 'Bạn chưa có lượt đặt chỗ nào' : tab === 'sessions' ? 'Bạn chưa có lượt gửi xe nào' : 'Bạn chưa có vé tháng nào'} />
         }
         ListFooterComponent={pagination?.hasNextPage ? <Button title="Xem thêm" variant="outline" onPress={() => setPage(p => p + 1)} style={{ marginTop: 8 }} /> : null}
       />

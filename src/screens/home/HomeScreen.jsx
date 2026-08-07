@@ -92,6 +92,21 @@ export default function HomeScreen({ navigation }) {
           </View>
         </Animated.View>
 
+        <Animated.View entering={FadeInDown.delay(350)}>
+          <Card onPress={() => navigation.navigate('BookingStack', { screen: 'MonthlyPass' })} style={{ backgroundColor: dark ? COLORS.dark.bgSecondary : '#eff6ff', borderColor: dark ? COLORS.dark.border : '#bfdbfe' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="card-outline" size={24} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: SIZES.fontMd, fontWeight: '800', color: dark ? COLORS.dark.text : COLORS.text }}>Đăng ký vé tháng</Text>
+                <Text style={{ marginTop: 3, fontSize: SIZES.fontSm, color: dark ? COLORS.dark.textSecondary : COLORS.textSecondary }}>Tiết kiệm và quản lý chỗ gửi xe theo tháng</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+            </View>
+          </Card>
+        </Animated.View>
+
         {/* Recent bookings */}
         <Animated.View entering={FadeInDown.delay(400)}>
           <SectionHeader title="Đặt chỗ gần đây" action="Xem tất cả" onAction={() => navigation.navigate('HistoryStack')} />

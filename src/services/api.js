@@ -70,6 +70,12 @@ export const bookingAPI = {
   create: (d) => api.post('/bookings', d),
   cancel: (id, d) => api.patch(`/bookings/${id}/cancel`, d),
 }
+export const monthlyPassAPI = {
+  getMy: (params) => api.get('/monthly-passes/my-passes', { params }),
+  getById: (id) => api.get(`/monthly-passes/${id}`),
+  create: (d) => api.post('/monthly-passes/my-passes', d),
+  cancel: (id) => api.delete(`/monthly-passes/my-passes/${id}`),
+}
 export const sessionAPI = {
   getAll: (params) => api.get('/parking-sessions', { params }),
   getById: (id) => api.get(`/parking-sessions/${id}`),
@@ -79,6 +85,7 @@ export const paymentAPI = {
   getById: (id) => api.get(`/payments/${id}`),
   initiateMomo: (d) => api.post('/payments/momo/initiate', d),
   initiateBookingBankTransfer: (d) => api.post('/payments/bank-transfer/booking/initiate', d),
+  createMonthlyPassAndPay: (d) => api.post('/payments/monthly-pass/create-and-pay', d),
   checkBankTransferStatus: (id) => api.get(`/payments/bank-transfer/${id}/status`),
 }
 export const notificationAPI = {

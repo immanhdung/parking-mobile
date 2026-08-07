@@ -155,6 +155,9 @@ export default function VehicleTypesScreen({ navigation }) {
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
                       <Text style={{ fontSize: SIZES.fontXs + 1, color: COLORS.primary, fontWeight: '700' }}>Block ngày: {formatCurrency(item.pricing?.dayBlockRate)}</Text>
                       <Text style={{ fontSize: SIZES.fontXs + 1, color: COLORS.textSecondary }}>Ngày: {formatCurrency(item.pricing?.dailyRate)}</Text>
+                      <Text style={{ fontSize: SIZES.fontXs + 1, color: item.pricing?.monthlyRate > 0 ? COLORS.success : COLORS.textTertiary, fontWeight: '700' }}>
+                        Vé tháng: {item.pricing?.monthlyRate > 0 ? `${formatCurrency(item.pricing.monthlyRate)}/tháng` : 'Chưa cấu hình'}
+                      </Text>
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={COLORS.textTertiary} style={{ marginTop: 2 }} />
