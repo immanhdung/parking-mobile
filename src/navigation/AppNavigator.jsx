@@ -166,7 +166,7 @@ function CustomTabBar({ state, navigation }) {
 
   const USER_TABS = [
     { name: 'HomeStack', icon: 'home', label: 'Trang chủ' },
-    { name: 'BookingStack', icon: 'calendar', label: 'Đặt chỗ', special: true },
+    { name: 'BookingStack', icon: 'calendar', label: 'Đặt chỗ' },
     { name: 'HistoryStack', icon: 'time', label: 'Lịch sử' },
     { name: 'ProfileStack', icon: 'person', label: 'Hồ sơ', badge: unreadData?.count },
   ]
@@ -174,7 +174,7 @@ function CustomTabBar({ state, navigation }) {
   const ADMIN_TABS = [
     { name: 'AdminHomeStack', icon: 'home', label: 'Trang chủ' },
     { name: 'UserManagementStack', icon: 'people', label: 'Tài khoản' },
-    { name: 'PermissionsStack', icon: 'shield-checkmark', label: 'Quyền', special: true },
+    { name: 'PermissionsStack', icon: 'shield-checkmark', label: 'Quyền' },
     { name: 'SystemConfigStack', icon: 'settings', label: 'Cấu hình' },
     { name: 'ProfileStack', icon: 'person', label: 'Hồ sơ' },
   ]
@@ -200,23 +200,25 @@ function CustomTabBar({ state, navigation }) {
               key={tab.name}
               onPress={() => navigation.navigate(tab.name)}
               activeOpacity={0.7}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end' }}
             >
               {tab.special ? (
                 // Booking FAB button
-                <View style={{
-                  width: 54, height: 54, borderRadius: 18,
-                  backgroundColor: COLORS.primary,
-                  alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 2,
-                  shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: 0.45, shadowRadius: 12, elevation: 10,
-                  transform: [{ translateY: -10 }],
-                }}>
-                  <Ionicons name={isFocused ? tab.icon : `${tab.icon}-outline`} size={24} color="#fff" />
+                <View style={{ height: 36, width: 54, alignItems: 'center', justifyContent: 'flex-end' }}>
+                  <View style={{
+                    width: 54, height: 54, borderRadius: 18,
+                    backgroundColor: COLORS.primary,
+                    alignItems: 'center', justifyContent: 'center',
+                    shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.45, shadowRadius: 12, elevation: 10,
+                    position: 'absolute',
+                    bottom: 0,
+                  }}>
+                    <Ionicons name={isFocused ? tab.icon : `${tab.icon}-outline`} size={24} color="#fff" />
+                  </View>
                 </View>
               ) : (
-                <View style={{ alignItems: 'center', position: 'relative' }}>
+                <View style={{ height: 36, alignItems: 'center', position: 'relative' }}>
                   <View style={{
                     width: 40, height: 36, borderRadius: 12,
                     alignItems: 'center', justifyContent: 'center',
@@ -247,7 +249,7 @@ function CustomTabBar({ state, navigation }) {
               <Text style={{
                 fontSize: 10, fontWeight: isFocused ? '700' : '500',
                 color: isFocused ? COLORS.primary : (dark ? '#64748b' : '#94a3b8'),
-                marginTop: tab.special ? 0 : 2,
+                marginTop: 2,
               }}>
                 {tab.label}
               </Text>
