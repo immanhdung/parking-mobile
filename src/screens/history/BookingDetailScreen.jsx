@@ -70,7 +70,7 @@ export default function BookingDetailScreen({ route, navigation }) {
             <Text style={{ fontSize: SIZES.fontMd, fontWeight: '700', color: dark ? COLORS.dark.text : COLORS.text, marginBottom: 12 }}>Thông tin đặt chỗ</Text>
             {[
               { label: 'Bãi xe', value: b?.parkingLot?.name, icon: 'business-outline' },
-              { label: 'Loại xe', value: b?.vehicleType?.name, icon: 'car-outline' },
+              { label: 'Loại xe', value: b?.vehicleType?.code || '—', icon: 'car-outline' },
               { label: 'Ngày', value: formatDate(b?.scheduledDate), icon: 'calendar-outline' },
               { label: 'Giờ vào', value: b?.startTime, icon: 'log-in-outline' },
               { label: 'Giờ ra', value: b?.endTime, icon: 'log-out-outline' },

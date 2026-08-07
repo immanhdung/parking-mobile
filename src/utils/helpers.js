@@ -20,6 +20,11 @@ export const formatCurrency = (amount) => {
   if (amount == null || isNaN(amount)) return '—'
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
 }
+
+export const getVehicleName = (code, defaultName) => {
+  const dict = { CAR: 'Xe ô tô', MOTORBIKE: 'Xe máy', BICYCLE: 'Xe đạp', ELECTRIC_BIKE: 'Xe đạp điện' };
+  return dict[code?.toUpperCase?.()] || defaultName || 'Phương tiện';
+}
 export const formatDuration = (hours) => {
   if (!hours || isNaN(hours)) return '0 phút'
   const h = Math.floor(hours)

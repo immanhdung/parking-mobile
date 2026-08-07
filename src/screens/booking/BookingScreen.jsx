@@ -90,8 +90,9 @@ export default function BookingScreen({ navigation, route }) {
   })
 
   const { data: vehicleTypes } = useQuery({
-    queryKey: ['vehicle-types'],
-    queryFn: () => vehicleTypeAPI.getAll().then(r => r.data.data),
+    queryKey: ['vehicle-types', form.parkingLot?._id],
+    queryFn: () => vehicleTypeAPI.getAll({ parkingLot: form.parkingLot?._id }).then(r => r.data.data),
+    enabled: !!form.parkingLot,
   })
 
   const { data: floors } = useQuery({
@@ -495,6 +496,8 @@ export default function BookingScreen({ navigation, route }) {
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                     {vehicleTypes?.map(vt => {
                       const isSelected = form.vehicleType?._id === vt._id
+                      const fallbackName = { CAR: 'Xe ô tô', MOTORBIKE: 'Xe máy', BICYCLE: 'Xe đạp', ELECTRIC_BIKE: 'Xe đạp điện' }[vt.code] || 'Phương tiện'
+                      const vName = fallbackName
                       return (
                         <TouchableOpacity key={vt._id} onPress={() => setForm({ ...form, vehicleType: vt })} activeOpacity={0.85}>
                           <View style={{
@@ -503,10 +506,13 @@ export default function BookingScreen({ navigation, route }) {
                             backgroundColor: isSelected ? (dark ? `${COLORS.primary}25` : COLORS.primaryBg) : (dark ? COLORS.dark.bgSecondary : '#f8fafc'),
                             flexDirection: 'row', alignItems: 'center', gap: 8
                           }}>
-                            <Text style={{ fontSize: 20 }}>{VehicleEmoji(vt.code)}</Text>
+                            <Text style={{ fontSize: 20 }}>{vt.icon || VehicleEmoji(vt.code)}</Text>
                             <View>
-                              <Text style={{ fontSize: SIZES.fontSm, fontWeight: '700', color: isSelected ? (dark ? '#60a5fa' : COLORS.primary) : (dark ? COLORS.dark.text : COLORS.text) }}>{vt.name}</Text>
-                              <Text style={{ fontSize: 10, color: dark ? COLORS.dark.textSecondary : COLORS.textTertiary }}>{formatCurrency(vt.pricing?.dayBlockRate)}/4h</Text>
+                              <Text style={{ fontSize: SIZES.fontSm, fontWeight: '700', color: isSelected ? (dark ? '#60a5fa' : COLORS.primary) : (dark ? COLORS.dark.text : COLORS.text) }}>{vt.code}</Text>
+                              <Text style={{ fontSize: 10, color: dark ? COLORS.dark.textSecondary : COLORS.textTertiary }}>Ngày: {formatCurrency(vt.pricing?.dayBlockRate)}/{vt.pricing?.blockHours || 4}h</Text>
+                              {vt.pricing?.nightBlockRate ? (
+                                <Text style={{ fontSize: 10, color: dark ? COLORS.dark.textSecondary : COLORS.textTertiary }}>Đêm: {formatCurrency(vt.pricing?.nightBlockRate)}/{vt.pricing?.blockHours || 4}h</Text>
+                              ) : null}
                             </View>
                           </View>
                         </TouchableOpacity>
