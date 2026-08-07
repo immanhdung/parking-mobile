@@ -27,11 +27,6 @@ export const getVehicleName = (code, defaultName) => {
   return dict[code?.toUpperCase?.()] || defaultName || 'Phương tiện';
 
 }
-export const getVehicleTypeName = (vehicleType) => {
-  if (!vehicleType) return 'Phương tiện'
-  return getVehicleName(vehicleType.code, vehicleType.name || vehicleType.description)
-}
-
 export const formatDuration = (hours) => {
   if (!hours || isNaN(hours)) return '0 phút'
   const h = Math.floor(hours)
